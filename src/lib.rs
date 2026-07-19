@@ -76,20 +76,23 @@ pub(crate) const CMD_COMMENT: u8 = 0x09;
 pub(crate) const CMD_DOCDECL: u8 = 0x0A;
 pub(crate) const CMD_ATTRIBUTE: u8 = 0x0F;
 
-// Data type (high nibble)
-pub(crate) const TYPE_NULL: u8 = 0x00;
-pub(crate) const TYPE_STRING: u8 = 0x10;
-pub(crate) const TYPE_STRING_INTERNED: u8 = 0x20;
-pub(crate) const TYPE_BYTES_HEX: u8 = 0x30;
-pub(crate) const TYPE_BYTES_BASE64: u8 = 0x40;
-pub(crate) const TYPE_INT: u8 = 0x50;
-pub(crate) const TYPE_INT_HEX: u8 = 0x60;
-pub(crate) const TYPE_LONG: u8 = 0x70;
-pub(crate) const TYPE_LONG_HEX: u8 = 0x80;
-pub(crate) const TYPE_FLOAT: u8 = 0x90;
-pub(crate) const TYPE_DOUBLE: u8 = 0xA0;
-pub(crate) const TYPE_BOOLEAN_TRUE: u8 = 0xB0;
-pub(crate) const TYPE_BOOLEAN_FALSE: u8 = 0xC0;
+// Data type (high nibble). Values match AOSP's BinaryXmlSerializer.java
+// exactly: `n << 4` for n = 1..=13 (high-nibble 0x00 is never used on the
+// wire — every token always OR's in an explicit type flag, even the
+// "absent value" case, TYPE_NULL).
+pub(crate) const TYPE_NULL: u8 = 0x10;
+pub(crate) const TYPE_STRING: u8 = 0x20;
+pub(crate) const TYPE_STRING_INTERNED: u8 = 0x30;
+pub(crate) const TYPE_BYTES_HEX: u8 = 0x40;
+pub(crate) const TYPE_BYTES_BASE64: u8 = 0x50;
+pub(crate) const TYPE_INT: u8 = 0x60;
+pub(crate) const TYPE_INT_HEX: u8 = 0x70;
+pub(crate) const TYPE_LONG: u8 = 0x80;
+pub(crate) const TYPE_LONG_HEX: u8 = 0x90;
+pub(crate) const TYPE_FLOAT: u8 = 0xA0;
+pub(crate) const TYPE_DOUBLE: u8 = 0xB0;
+pub(crate) const TYPE_BOOLEAN_TRUE: u8 = 0xC0;
+pub(crate) const TYPE_BOOLEAN_FALSE: u8 = 0xD0;
 
 // ---------------------------------------------------------------------------
 // Error type

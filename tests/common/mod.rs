@@ -55,18 +55,20 @@ pub const CMD_END_TAG: u8 = 0x03;
 pub const CMD_TEXT: u8 = 0x04;
 pub const CMD_ATTRIBUTE: u8 = 0x0F;
 
-pub const TYPE_STRING: u8 = 0x10;
-pub const TYPE_STRING_INTERNED: u8 = 0x20;
-pub const TYPE_BYTES_HEX: u8 = 0x30;
-pub const TYPE_BYTES_BASE64: u8 = 0x40;
-pub const TYPE_INT: u8 = 0x50;
-pub const TYPE_INT_HEX: u8 = 0x60;
-pub const TYPE_LONG: u8 = 0x70;
-pub const TYPE_LONG_HEX: u8 = 0x80;
-pub const TYPE_FLOAT: u8 = 0x90;
-pub const TYPE_DOUBLE: u8 = 0xA0;
-pub const TYPE_BOOLEAN_TRUE: u8 = 0xB0;
-pub const TYPE_BOOLEAN_FALSE: u8 = 0xC0;
+// Matches AOSP's BinaryXmlSerializer.java exactly: `n << 4` for n = 1..=13.
+pub const TYPE_NULL: u8 = 0x10;
+pub const TYPE_STRING: u8 = 0x20;
+pub const TYPE_STRING_INTERNED: u8 = 0x30;
+pub const TYPE_BYTES_HEX: u8 = 0x40;
+pub const TYPE_BYTES_BASE64: u8 = 0x50;
+pub const TYPE_INT: u8 = 0x60;
+pub const TYPE_INT_HEX: u8 = 0x70;
+pub const TYPE_LONG: u8 = 0x80;
+pub const TYPE_LONG_HEX: u8 = 0x90;
+pub const TYPE_FLOAT: u8 = 0xA0;
+pub const TYPE_DOUBLE: u8 = 0xB0;
+pub const TYPE_BOOLEAN_TRUE: u8 = 0xC0;
+pub const TYPE_BOOLEAN_FALSE: u8 = 0xD0;
 
 // ---------------------------------------------------------------------------
 // Higher-level element/attribute/document builders
@@ -147,7 +149,7 @@ pub fn attr_bool(name: &str, value: bool) -> Vec<u8> {
 }
 
 pub fn attr_null(name: &str) -> Vec<u8> {
-    let mut out = vec![CMD_ATTRIBUTE]; // TYPE_NULL == 0x00
+    let mut out = vec![TYPE_NULL | CMD_ATTRIBUTE];
     out.extend(interned_new(name));
     out
 }
