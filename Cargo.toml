@@ -1,0 +1,24 @@
+[package]
+name = "abx"
+version = "0.1.0"
+edition = "2024"
+description = "Android Binary XML (ABX) parser using nom"
+license = "MIT"
+
+[dependencies]
+nom = "7"
+base64 = "0.22"
+faster-hex = "0.9"
+thiserror = "1"
+serde = { version = "1", optional = true }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[features]
+default = []
+serialize = ["dep:serde"]
+
+[[example]]
+name = "abx2xml"
+path = "examples/abx2xml.rs"
