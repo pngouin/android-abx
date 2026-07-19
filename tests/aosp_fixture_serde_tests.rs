@@ -1,12 +1,9 @@
 #![cfg(feature = "serialize")]
-//! serde deserialization tests against the real, independently-encoded
-//! `.abx` fixtures in `tests/fixtures/` (see `tests/aosp_fixture_tests.rs`
-//! for why these matter more than synthetic test data: they're what caught
-//! the `TYPE_*` nibble bug that every synthetic-blob test missed). These
-//! specifically exercise the `serialize` feature — `deserialize_next`,
-//! `deserialize_all`, `deserialize_iter`, and nested-child mapping — against
-//! that same real data, rather than only the hand-built blobs in
-//! `tests/serde_tests.rs`.
+//! serde deserialization tests against the same real, AOSP-encoded `.abx`
+//! fixtures as `tests/aosp_fixture_tests.rs`, exercising the `serialize`
+//! feature — `deserialize_next`, `deserialize_all`, `deserialize_iter`, and
+//! nested-child mapping — against real data rather than only the hand-built
+//! blobs in `tests/serde_tests.rs`.
 
 use std::io::Cursor;
 
@@ -16,15 +13,12 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, PartialEq)]
 struct SimplePkg {
     name: String,
-    // xml2abx stores "version"/"flags" as plain (interned) strings, not
-    // TYPE_INT -- this exercises ValueDeserializer's str::parse fallback
-    // for a String-typed attribute against real external data.
     version: i32,
     flags: i32,
 }
 
 #[test]
-fn simple_pkg_fixture_deserializes_with_string_to_int_coercion() {
+fn simple_pkg_fixture_deserializes_typed_ints() {
     let data = include_bytes!("fixtures/simple_pkg.abx");
     let mut p = AbxParser::new(data).unwrap();
     let pkg: SimplePkg = p.deserialize_next("pkg").unwrap().unwrap();
@@ -93,17 +87,14 @@ fn nested_permissions_fixture_deserializes_identically_via_streaming() {
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Settings {
-    // xml2abx really does infer TYPE_BOOLEAN_TRUE/FALSE here.
     enabled: bool,
     hidden: bool,
-    // ...but not numeric types -- these are plain strings on the wire,
-    // coerced by str::parse the same way as SimplePkg's fields above.
     count: i32,
     ratio: f64,
 }
 
 #[test]
-fn booleans_fixture_deserializes_bool_and_numeric_coercion() {
+fn booleans_fixture_deserializes_typed_attributes() {
     let data = include_bytes!("fixtures/booleans.abx");
     let mut p = AbxParser::new(data).unwrap();
     let settings: Settings = p.deserialize_next("settings").unwrap().unwrap();
@@ -154,28 +145,24 @@ struct Note {
 }
 
 #[test]
-fn special_chars_fixture_title_attribute_is_raw_escaped_text() {
+fn special_chars_fixture_text_drops_entity_references() {
     let data = include_bytes!("fixtures/special_chars.abx");
     let mut p = AbxParser::new(data).unwrap();
     let note: Note = p.deserialize_next("note").unwrap().unwrap();
 
-    // xml2abx does not XML-decode entities inside attribute *values*
-    // (see tests/aosp_fixture_tests.rs::special_chars_fixture for the
-    // verified raw bytes) -- serde sees exactly the same raw string as the
-    // event-level API does, since both read from the same AttributeValue.
-    assert_eq!(note.title, "Tom &amp; Jerry &lt;3&gt;");
+    // title is the real AttributeValue::String, already decoded (see
+    // special_chars_fixture in tests/aosp_fixture_tests.rs) — serde sees
+    // the same value as the event-level API, since both read from the
+    // same AttributeValue.
+    assert_eq!(note.title, "Tom & Jerry <3>");
 
-    // Real, documented limitation of the "$text" convenience field, found
-    // by this fixture: read_element_body() (src/de.rs) only accumulates
-    // Event::Text into the text buffer, silently skipping
-    // Event::EntityReference and Event::IgnorableWhitespace -- both of
-    // which the source text (`Use &quot;quotes&quot; &amp;
-    // &apos;apostrophes&apos; safely`) is full of, since xml2abx correctly
-    // splits entities out of text content into their own EntityReference
-    // events (unlike its attribute-value handling above). The event-level
-    // API's to_xml() renders all three event kinds and round-trips
-    // correctly (see tests/aosp_fixture_tests.rs::special_chars_fixture);
-    // $text does not, so it drops both the entity characters and the
-    // whitespace between text runs down to this:
-    assert_eq!(note.body, "Use quotesapostrophes safely");
+    // Limitation of the "$text" convenience field: read_element_body()
+    // (src/de/traversal.rs) only accumulates Event::Text, silently
+    // skipping Event::EntityReference and Event::IgnorableWhitespace —
+    // both of which this source text is full of (five EntityReference
+    // events split the text into six Text pieces). to_xml() renders all
+    // three event kinds correctly (see special_chars_fixture); $text does
+    // not, so it drops down to this (note the doubled space, from two
+    // adjacent Text(" ") pieces either side of the &amp; entity):
+    assert_eq!(note.body, "Use quotes  apostrophes safely");
 }
