@@ -67,3 +67,114 @@ pub const TYPE_FLOAT: u8 = 0x90;
 pub const TYPE_DOUBLE: u8 = 0xA0;
 pub const TYPE_BOOLEAN_TRUE: u8 = 0xB0;
 pub const TYPE_BOOLEAN_FALSE: u8 = 0xC0;
+
+// ---------------------------------------------------------------------------
+// Higher-level element/attribute/document builders
+// ---------------------------------------------------------------------------
+
+pub fn start_tag(name: &str) -> Vec<u8> {
+    let mut out = vec![TYPE_STRING | CMD_START_TAG];
+    out.extend(interned_new(name));
+    out
+}
+
+pub fn end_tag(name: &str) -> Vec<u8> {
+    let mut out = vec![TYPE_STRING | CMD_END_TAG];
+    out.extend(interned_new(name));
+    out
+}
+
+pub fn text(s: &str) -> Vec<u8> {
+    let mut out = vec![TYPE_STRING | CMD_TEXT];
+    out.extend(utf(s));
+    out
+}
+
+pub fn attr_string(name: &str, value: &str) -> Vec<u8> {
+    let mut out = vec![TYPE_STRING | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(utf(value));
+    out
+}
+
+pub fn attr_int(name: &str, value: i32) -> Vec<u8> {
+    let mut out = vec![TYPE_INT | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(i32_be(value));
+    out
+}
+
+pub fn attr_int_hex(name: &str, value: u32) -> Vec<u8> {
+    let mut out = vec![TYPE_INT_HEX | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(i32_be(value as i32));
+    out
+}
+
+pub fn attr_long(name: &str, value: i64) -> Vec<u8> {
+    let mut out = vec![TYPE_LONG | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(i64_be(value));
+    out
+}
+
+pub fn attr_long_hex(name: &str, value: u64) -> Vec<u8> {
+    let mut out = vec![TYPE_LONG_HEX | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(i64_be(value as i64));
+    out
+}
+
+pub fn attr_float(name: &str, value: f32) -> Vec<u8> {
+    let mut out = vec![TYPE_FLOAT | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(f32_be(value));
+    out
+}
+
+pub fn attr_double(name: &str, value: f64) -> Vec<u8> {
+    let mut out = vec![TYPE_DOUBLE | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(f64_be(value));
+    out
+}
+
+pub fn attr_bool(name: &str, value: bool) -> Vec<u8> {
+    let ty = if value { TYPE_BOOLEAN_TRUE } else { TYPE_BOOLEAN_FALSE };
+    let mut out = vec![ty | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out
+}
+
+pub fn attr_null(name: &str) -> Vec<u8> {
+    let mut out = vec![CMD_ATTRIBUTE]; // TYPE_NULL == 0x00
+    out.extend(interned_new(name));
+    out
+}
+
+pub fn attr_bytes_hex(name: &str, value: &[u8]) -> Vec<u8> {
+    let mut out = vec![TYPE_BYTES_HEX | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(u16_be(value.len() as u16));
+    out.extend_from_slice(value);
+    out
+}
+
+pub fn attr_bytes_base64(name: &str, value: &[u8]) -> Vec<u8> {
+    let mut out = vec![TYPE_BYTES_BASE64 | CMD_ATTRIBUTE];
+    out.extend(interned_new(name));
+    out.extend(u16_be(value.len() as u16));
+    out.extend_from_slice(value);
+    out
+}
+
+/// Assemble a full ABX document: magic header, `StartDocument`, the given
+/// pre-built event byte sequences concatenated in order, then `EndDocument`.
+pub fn document(parts: &[Vec<u8>]) -> Vec<u8> {
+    let mut body = vec![CMD_START_DOCUMENT];
+    for p in parts {
+        body.extend_from_slice(p);
+    }
+    body.push(CMD_END_DOCUMENT);
+    with_magic(&body)
+}

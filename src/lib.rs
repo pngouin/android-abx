@@ -580,6 +580,24 @@ impl<'a> AbxParser<'a> {
         Ok(buf)
     }
 
+    /// Find the next `<element>`, deserialize its attributes (and direct
+    /// text content, via a `#[serde(rename = "$text")]` field) into `T`,
+    /// then skip past its matching end tag. `Ok(None)` at end of document.
+    #[cfg(feature = "serialize")]
+    pub fn deserialize_next<T: serde::de::DeserializeOwned>(&mut self, element: &str) -> Result<Option<T>> {
+        crate::de::find_and_consume_element(self, element)
+    }
+
+    /// Deserialize every remaining `<element>` into a `Vec<T>`.
+    #[cfg(feature = "serialize")]
+    pub fn deserialize_all<T: serde::de::DeserializeOwned>(&mut self, element: &str) -> Result<Vec<T>> {
+        let mut out = Vec::new();
+        while let Some(item) = self.deserialize_next(element)? {
+            out.push(item);
+        }
+        Ok(out)
+    }
+
     /// Collect the whole document into a `HashMap<element → Vec<HashMap<attr → value_str>>>`.
     pub fn into_map(mut self) -> Result<HashMap<String, Vec<HashMap<String, String>>>> {
         let mut map: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
@@ -638,6 +656,11 @@ impl AbxParserOwned {
 
 pub mod stream;
 pub use stream::AbxStreamParser;
+
+#[cfg(feature = "serialize")]
+mod de;
+#[cfg(feature = "serialize")]
+pub use de::{from_element, from_file, from_reader, from_slice};
 
 // ---------------------------------------------------------------------------
 // Convenience top-level functions

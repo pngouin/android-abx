@@ -22,3 +22,13 @@ serialize = ["dep:serde"]
 [[example]]
 name = "abx2xml"
 path = "examples/abx2xml.rs"
+
+[[example]]
+name = "serde_pkgs"
+path = "examples/serde_pkgs.rs"
+required-features = ["serialize"]
+
+[[example]]
+name = "serde_root"
+path = "examples/serde_root.rs"
+required-features = ["serde-support"]

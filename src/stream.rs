@@ -411,6 +411,35 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(out)
     }
 
+    /// Find the next `<element>`, deserialize its attributes (and direct
+    /// text content, via a `#[serde(rename = "$text")]` field) into `T`,
+    /// then skip past its matching end tag. `Ok(None)` at end of document.
+    #[cfg(feature = "serialize")]
+    pub fn deserialize_next<T: serde::de::DeserializeOwned>(&mut self, element: &str) -> Result<Option<T>> {
+        crate::de::find_and_consume_element(self, element)
+    }
+
+    /// Deserialize every remaining `<element>` into a `Vec<T>`.
+    #[cfg(feature = "serialize")]
+    pub fn deserialize_all<T: serde::de::DeserializeOwned>(&mut self, element: &str) -> Result<Vec<T>> {
+        let mut out = Vec::new();
+        while let Some(item) = self.deserialize_next(element)? {
+            out.push(item);
+        }
+        Ok(out)
+    }
+
+    /// Lazily deserialize every remaining `<element>` as a `T`, one at a
+    /// time, without buffering the whole document or the whole result set —
+    /// the streaming counterpart to [`deserialize_all`](Self::deserialize_all).
+    #[cfg(feature = "serialize")]
+    pub fn deserialize_iter<'p, T: serde::de::DeserializeOwned>(
+        &'p mut self,
+        element: &'p str,
+    ) -> DeserializeIter<'p, R, T> {
+        DeserializeIter { parser: self, element, _marker: std::marker::PhantomData }
+    }
+
     /// Render the rest of the document as an XML string.
     pub fn to_xml(&mut self) -> Result<String> {
         let mut buf = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
@@ -471,5 +500,27 @@ impl<R: Read> Iterator for AbxStreamParser<R> {
             Ok(None) => None,
             Err(e) => Some(Err(e)),
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DeserializeIter — lazy struct-per-element streaming, from deserialize_iter
+// ---------------------------------------------------------------------------
+
+/// Lazily yields each remaining `<element>`, deserialized into `T`. See
+/// [`AbxStreamParser::deserialize_iter`].
+#[cfg(feature = "serialize")]
+pub struct DeserializeIter<'p, R: Read, T> {
+    parser: &'p mut AbxStreamParser<R>,
+    element: &'p str,
+    _marker: std::marker::PhantomData<T>,
+}
+
+#[cfg(feature = "serialize")]
+impl<'p, R: Read, T: serde::de::DeserializeOwned> Iterator for DeserializeIter<'p, R, T> {
+    type Item = Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.parser.deserialize_next(self.element).transpose()
     }
 }
