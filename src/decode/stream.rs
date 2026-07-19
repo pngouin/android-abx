@@ -89,7 +89,7 @@ pub struct AbxStreamParser<R: Read> {
     /// `true` once the underlying reader returned 0 bytes.
     eof: bool,
     /// Interned string pool.
-    pool: Vec<String>,
+    pool: Vec<crate::InternedStr>,
 }
 
 impl<R: Read> AbxStreamParser<R> {
@@ -230,11 +230,13 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(v)
     }
 
-    /// Read an interned string (either a back-reference or a new entry).
-    fn read_interned(&mut self) -> Result<String> {
+    /// Read an interned string. Every occurrence after the first is a
+    /// back-reference into `pool`, resolved with `InternedStr::clone` (a
+    /// refcount bump) rather than a fresh allocation and copy.
+    fn read_interned(&mut self) -> Result<crate::InternedStr> {
         let idx = self.read_u16()?;
         if idx == INTERNED_NEW {
-            let s = self.read_utf()?;
+            let s: crate::InternedStr = self.read_utf()?.into();
             self.pool.push(s.clone());
             Ok(s)
         } else {
@@ -251,7 +253,7 @@ impl<R: Read> AbxStreamParser<R> {
         match type_nibble {
             TYPE_NULL            => Ok(AttributeValue::Null),
             TYPE_STRING          => Ok(AttributeValue::String(self.read_utf()?)),
-            TYPE_STRING_INTERNED => Ok(AttributeValue::String(self.read_interned()?)),
+            TYPE_STRING_INTERNED => Ok(AttributeValue::String(self.read_interned()?.to_string())),
             TYPE_BYTES_HEX       => Ok(AttributeValue::BytesHex(self.read_bytes_blob()?)),
             TYPE_BYTES_BASE64    => Ok(AttributeValue::BytesBase64(self.read_bytes_blob()?)),
             TYPE_INT             => Ok(AttributeValue::Int(self.read_i32()?)),
@@ -456,9 +458,12 @@ impl<R: Read> AbxStreamParser<R> {
     /// large files because it does not accumulate the whole result in a `String`.
     pub fn write_xml(&mut self, writer: &mut impl std::io::Write) -> Result<()> {
         writer.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
+        // One scratch buffer reused (cleared, not reallocated) across every
+        // event, instead of a fresh allocation per event.
+        let mut tmp = String::new();
         while let Some(ev) = self.next_event()? {
             if matches!(ev, Event::EndDocument) { break; }
-            let mut tmp = String::new();
+            tmp.clear();
             render_event(&ev, &mut tmp);
             writer.write_all(tmp.as_bytes())?;
         }
@@ -470,10 +475,10 @@ impl<R: Read> AbxStreamParser<R> {
         let mut map: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
         while let Some(ev) = self.next_event()? {
             if let Event::StartTag { name, attributes } = ev {
-                let entry = map.entry(name).or_default();
+                let entry = map.entry(name.into()).or_default();
                 let mut attrs = HashMap::new();
                 for attr in attributes {
-                    attrs.insert(attr.name, attr.value.as_str().into_owned());
+                    attrs.insert(attr.name.into(), attr.value.as_str().into_owned());
                 }
                 entry.push(attrs);
             }

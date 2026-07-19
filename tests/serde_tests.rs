@@ -379,8 +379,8 @@ fn deserialize_empty_string_attribute_is_some_empty_not_none() {
 
 // ---------------------------------------------------------------------------
 // Nested child elements as struct fields (quick-xml-style element mapping,
-// without the @attr prefix — see src/de.rs module docs for the precedence
-// rule used instead: attribute wins over a same-named child).
+// without the @attr prefix — see src/de/mod.rs module docs for the
+// precedence rule used instead: attribute wins over a same-named child).
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, PartialEq)]
