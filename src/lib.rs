@@ -1,7 +1,11 @@
 //! # abx — Android Binary XML parser
 //!
 //! Parses the ABX (Android Binary XML) format produced by `BinaryXmlSerializer`
-//! and read back by `BinaryXmlPullParser` in AOSP.
+//! and read back by `BinaryXmlPullParser` in AOSP. Wire-format constants are
+//! verified against AOSP's own source
+//! (`BinaryXmlSerializer.java`/`FastDataOutput.java`) and tested against
+//! real `.abx` files from an independent encoder, not just this crate's own
+//! synthetic test data — see `tests/aosp_fixture_tests.rs`.
 //!
 //! ## Two parsers, one format
 //!

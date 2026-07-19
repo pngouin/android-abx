@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<catalog>
+    <item id="1" category="tools" name="Hammer"/>
+    <item id="2" category="tools" name="Wrench"/>
+    <item id="3" category="tools" name="Screwdriver"/>
+    <item id="4" category="parts" name="Bolt"/>
+    <item id="5" category="parts" name="Nut"/>
+    <item id="6" category="parts" name="Washer"/>
+    <item id="7" category="tools" name="Pliers"/>
+</catalog>
