@@ -23,7 +23,7 @@
 use std::io::Read;
 
 use nom::{
-    number::complete::{be_f32, be_f64, be_i32, be_i64, be_u16, be_u8},
+    number::streaming::{be_f32, be_f64, be_i32, be_i64, be_u16, be_u8},
     Needed,
 };
 
