@@ -50,3 +50,12 @@ harness = false
 name = "deserialize"
 harness = false
 required-features = ["serialize"]
+
+[[bench]]
+name = "encoding"
+harness = false
+
+[[bench]]
+name = "xml_encoding"
+harness = false
+required-features = ["xml"]

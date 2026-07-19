@@ -1,19 +1,7 @@
-//! Compares `AbxParser` (in-memory, zero-copy) against `AbxStreamParser`
-//! (streaming, ring-buffered — here fed via an in-memory `Cursor`, so this
-//! isolates the ring-buffer/refill overhead itself rather than I/O cost) on
-//! identical synthetic data, at a few sizes.
-//!
-//! This crate has one implementation with two parsing strategies rather
-//! than a second-language port, so this is the closest equivalent here to
-//! the Rust-vs-C++ comparison in
-//! <https://github.com/rhythmcache/android-xml-converter>'s benchmarks —
-//! same idea (which of two implementations is faster, at what data size),
-//! adapted to what's actually comparable in this crate. That project times
-//! two separate compiled binaries end-to-end with `hyperfine`; this instead
-//! uses `criterion`, the standard in-process benchmarking tool for a Rust
-//! *library* (statistically-sound sampling, throughput reporting, HTML
-//! reports, regression detection across runs — see `target/criterion/report/index.html`
-//! after running).
+//! Compares `AbxParser` (in-memory) against `AbxStreamParser` (streaming,
+//! fed via an in-memory `Cursor` to isolate ring-buffer/refill overhead
+//! from actual I/O cost) on synthetic data at a few sizes. HTML report at
+//! `target/criterion/report/index.html` after running.
 //!
 //! Run with: `cargo bench --bench parsing`
 
