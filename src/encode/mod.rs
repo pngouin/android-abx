@@ -4,6 +4,11 @@
 mod writer;
 pub use writer::AbxWriter;
 
+#[cfg(feature = "xml")]
+mod xml;
+#[cfg(feature = "xml")]
+pub use xml::xml_to_abx;
+
 use crate::{Event, Result};
 
 /// Encode a full `Event` stream to an in-memory ABX byte buffer.

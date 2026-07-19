@@ -24,6 +24,8 @@ pub enum AbxError {
     Io(#[from] std::io::Error),
     #[error("deserialization error: {0}")]
     Deserialization(String),
+    #[error("XML parse error: {0}")]
+    Xml(String),
 }
 
 impl<I: std::fmt::Debug> From<nom::Err<nom::error::Error<I>>> for AbxError {

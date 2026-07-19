@@ -81,6 +81,8 @@ pub use decode::stream::AbxStreamParser;
 
 mod encode;
 pub use encode::{events_to_abx, AbxWriter};
+#[cfg(feature = "xml")]
+pub use encode::xml_to_abx;
 
 #[cfg(feature = "serialize")]
 mod de;
