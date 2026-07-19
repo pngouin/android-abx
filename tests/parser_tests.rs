@@ -3,74 +3,10 @@
 /// We build synthetic ABX blobs by hand (matching the AOSP wire format)
 /// so the tests are self-contained with no binary fixtures required.
 
-use abx::{AbxParser, AttributeValue, Event, MAGIC};
+use abx::{AbxParser, AttributeValue, Event};
 
-// ---------------------------------------------------------------------------
-// Helpers to build synthetic ABX blobs
-// ---------------------------------------------------------------------------
-
-fn u16_be(v: u16) -> [u8; 2] {
-    v.to_be_bytes()
-}
-fn i32_be(v: i32) -> [u8; 4] {
-    v.to_be_bytes()
-}
-fn i64_be(v: i64) -> [u8; 8] {
-    v.to_be_bytes()
-}
-fn f32_be(v: f32) -> [u8; 4] {
-    v.to_be_bytes()
-}
-fn f64_be(v: f64) -> [u8; 8] {
-    v.to_be_bytes()
-}
-
-/// Write a length-prefixed UTF-8 string (ABX "UTF" encoding).
-fn utf(s: &str) -> Vec<u8> {
-    let bytes = s.as_bytes();
-    let mut out = u16_be(bytes.len() as u16).to_vec();
-    out.extend_from_slice(bytes);
-    out
-}
-
-/// Write an interned string reference (new = 0xFFFF + utf).
-fn interned_new(s: &str) -> Vec<u8> {
-    let mut out = u16_be(0xFFFF).to_vec();
-    out.extend_from_slice(&utf(s));
-    out
-}
-
-/// Write an interned string back-reference.
-fn interned_ref(idx: u16) -> Vec<u8> {
-    u16_be(idx).to_vec()
-}
-
-/// Prepend the MAGIC header.
-fn with_magic(body: &[u8]) -> Vec<u8> {
-    let mut out = MAGIC.to_vec();
-    out.extend_from_slice(body);
-    out
-}
-
-const CMD_START_DOCUMENT: u8 = 0x00;
-const CMD_END_DOCUMENT: u8 = 0x01;
-const CMD_START_TAG: u8 = 0x02;
-const CMD_END_TAG: u8 = 0x03;
-const CMD_TEXT: u8 = 0x04;
-const CMD_ATTRIBUTE: u8 = 0x0F;
-
-const TYPE_STRING: u8 = 0x10;
-const TYPE_STRING_INTERNED: u8 = 0x20;
-const TYPE_BYTES_HEX: u8 = 0x30;
-const TYPE_BYTES_BASE64: u8 = 0x40;
-const TYPE_INT: u8 = 0x50;
-const TYPE_INT_HEX: u8 = 0x60;
-const TYPE_LONG: u8 = 0x70;
-const TYPE_LONG_HEX: u8 = 0x80;
-const TYPE_FLOAT: u8 = 0x90;
-const TYPE_DOUBLE: u8 = 0xA0;
-const TYPE_BOOLEAN_TRUE: u8 = 0xB0;
-const TYPE_BOOLEAN_FALSE: u8 = 0xC0;
+mod common;
+use common::*;
 
 // ---------------------------------------------------------------------------
 // Tests
