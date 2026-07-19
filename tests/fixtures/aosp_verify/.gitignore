@@ -1,0 +1,5 @@
+# Built by build-and-run.sh -- compiled classes and the generated fixture,
+# regenerated on every run, deliberately not checked in here (the fixture
+# itself is checked in one level up, at tests/fixtures/aosp_verify.abx).
+/out/
+*.abx

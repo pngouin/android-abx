@@ -1,0 +1,28 @@
+# Reproducible re-run of the "compile and run the real AOSP source" check
+# documented in this repo's CLAUDE.md ("VERIFIED: encoder checked against
+# real AOSP source by actually compiling and running it") and README.md
+# ("Verifying against real AOSP"). Builds fully offline from vendor/ (see
+# vendor/NOTICE.md) -- no network access needed beyond pulling the base
+# image itself.
+#
+# Build (the check itself runs as part of the build, so a failing build
+# means a check failed):
+#   podman build -t abx-aosp-verify -f Containerfile .
+#   # or: docker build -t abx-aosp-verify -f Containerfile .
+#
+# Copy the generated fixtures back out (all six .abx files under fixtures/):
+#   podman create --name abx-aosp-verify-tmp abx-aosp-verify
+#   podman cp abx-aosp-verify-tmp:/work/fixtures ./fixtures
+#   podman rm abx-aosp-verify-tmp
+
+FROM docker.io/library/eclipse-temurin:21-jdk
+
+WORKDIR /work
+COPY android/ ./android/
+COPY vendor/ ./vendor/
+COPY Harness.java build-and-run.sh ./
+RUN chmod +x build-and-run.sh
+
+RUN ./build-and-run.sh fixtures
+
+CMD ["java", "-cp", "out:vendor/xmlpull/xmlpull-1.1.3.1.jar", "Harness", "fixtures"]
