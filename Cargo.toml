@@ -14,6 +14,7 @@ serde = { version = "1", optional = true }
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [features]
 default = []
@@ -31,4 +32,13 @@ required-features = ["serialize"]
 [[example]]
 name = "serde_root"
 path = "examples/serde_root.rs"
-required-features = ["serde-support"]
+required-features = ["serialize"]
+
+[[bench]]
+name = "parsing"
+harness = false
+
+[[bench]]
+name = "deserialize"
+harness = false
+required-features = ["serialize"]
