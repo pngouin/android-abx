@@ -79,6 +79,9 @@ pub use decode::{AbxParser, AbxParserOwned};
 pub use decode::stream;
 pub use decode::stream::AbxStreamParser;
 
+mod encode;
+pub use encode::{events_to_abx, AbxWriter};
+
 #[cfg(feature = "serialize")]
 mod de;
 #[cfg(feature = "serialize")]

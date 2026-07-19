@@ -53,6 +53,12 @@ pub const CMD_END_DOCUMENT: u8 = 0x01;
 pub const CMD_START_TAG: u8 = 0x02;
 pub const CMD_END_TAG: u8 = 0x03;
 pub const CMD_TEXT: u8 = 0x04;
+pub const CMD_CDSECT: u8 = 0x05;
+pub const CMD_ENTITY_REF: u8 = 0x06;
+pub const CMD_IGNORABLE_WHITESPACE: u8 = 0x07;
+pub const CMD_PROCESSING_INSTRUCTION: u8 = 0x08;
+pub const CMD_COMMENT: u8 = 0x09;
+pub const CMD_DOCDECL: u8 = 0x0A;
 pub const CMD_ATTRIBUTE: u8 = 0x0F;
 
 // Matches AOSP's BinaryXmlSerializer.java exactly: `n << 4` for n = 1..=13.
@@ -75,13 +81,13 @@ pub const TYPE_BOOLEAN_FALSE: u8 = 0xD0;
 // ---------------------------------------------------------------------------
 
 pub fn start_tag(name: &str) -> Vec<u8> {
-    let mut out = vec![TYPE_STRING | CMD_START_TAG];
+    let mut out = vec![TYPE_STRING_INTERNED | CMD_START_TAG];
     out.extend(interned_new(name));
     out
 }
 
 pub fn end_tag(name: &str) -> Vec<u8> {
-    let mut out = vec![TYPE_STRING | CMD_END_TAG];
+    let mut out = vec![TYPE_STRING_INTERNED | CMD_END_TAG];
     out.extend(interned_new(name));
     out
 }
@@ -90,6 +96,21 @@ pub fn text(s: &str) -> Vec<u8> {
     let mut out = vec![TYPE_STRING | CMD_TEXT];
     out.extend(utf(s));
     out
+}
+
+/// Generic text-bearing token: `TYPE_STRING` + length-prefixed UTF-8, even
+/// for an empty string — what `AbxWriter` actually emits.
+pub fn text_token(cmd: u8, s: &str) -> Vec<u8> {
+    let mut out = vec![TYPE_STRING | cmd];
+    out.extend(utf(s));
+    out
+}
+
+/// The `TYPE_NULL` form of a text-bearing token — never emitted by
+/// `AbxWriter` (see `text_token`), but still valid, decodable wire data
+/// (this crate's own decoder handles it, only real AOSP's parser doesn't).
+pub fn null_text_token(cmd: u8) -> Vec<u8> {
+    vec![TYPE_NULL | cmd]
 }
 
 pub fn attr_string(name: &str, value: &str) -> Vec<u8> {
@@ -173,10 +194,10 @@ pub fn attr_bytes_base64(name: &str, value: &[u8]) -> Vec<u8> {
 /// Assemble a full ABX document: magic header, `StartDocument`, the given
 /// pre-built event byte sequences concatenated in order, then `EndDocument`.
 pub fn document(parts: &[Vec<u8>]) -> Vec<u8> {
-    let mut body = vec![CMD_START_DOCUMENT];
+    let mut body = vec![CMD_START_DOCUMENT | TYPE_NULL];
     for p in parts {
         body.extend_from_slice(p);
     }
-    body.push(CMD_END_DOCUMENT);
+    body.push(CMD_END_DOCUMENT | TYPE_NULL);
     with_magic(&body)
 }
