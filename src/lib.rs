@@ -7,6 +7,11 @@
 //! real `.abx` files from an independent encoder, not just this crate's own
 //! synthetic test data — see `tests/aosp_fixture_tests.rs`.
 //!
+//! Not to be confused with **AXML**, the unrelated chunk-based binary format
+//! used for compiled resources inside APKs (`AndroidManifest.xml`,
+//! `res/**/*.xml`) — this crate does not read that format. See `CLAUDE.md`
+//! for the comparison if you're not sure which one you have.
+//!
 //! ## Two parsers, one format
 //!
 //! | Parser | Input | When to use |
