@@ -158,6 +158,58 @@ fn test_int_hex_attribute() {
 }
 
 #[test]
+fn test_int_hex_attribute_negative_renders_like_real_aosp() {
+    // Real AOSP renders TYPE_INT_HEX via Integer.toString(v, 16), which
+    // treats v as signed: negative -> "-" + hex(magnitude), e.g.
+    // 0xCAFEBABE is "-35014542", not "cafebabe".
+    let mut body = vec![CMD_START_DOCUMENT];
+    body.push(TYPE_STRING | CMD_START_TAG);
+    body.extend(interned_new("e"));
+    body.push(TYPE_INT_HEX | CMD_ATTRIBUTE);
+    body.extend(interned_new("v"));
+    body.extend(i32_be(0xCAFEBABE_u32 as i32));
+    body.push(CMD_END_DOCUMENT);
+
+    let data = with_magic(&body);
+    let mut p = AbxParser::new(&data).unwrap();
+    let _ = p.next_event().unwrap();
+    let ev = p.next_event().unwrap().unwrap();
+
+    if let Event::StartTag { attributes, .. } = ev {
+        assert_eq!(attributes[0].value, AttributeValue::IntHex(0xCAFEBABE));
+        assert_eq!(attributes[0].value.as_str(), "-35014542");
+    } else {
+        panic!();
+    }
+}
+
+#[test]
+fn test_long_hex_attribute_negative_renders_like_real_aosp() {
+    // Same as test_int_hex_attribute_negative_renders_like_real_aosp, for
+    // TYPE_LONG_HEX / Long.toString(v, 16). Confirmed against real AOSP:
+    // Long.toString(0xDEADBEEFCAFEBABEL, 16) is "-2152411035014542".
+    let mut body = vec![CMD_START_DOCUMENT];
+    body.push(TYPE_STRING | CMD_START_TAG);
+    body.extend(interned_new("e"));
+    body.push(TYPE_LONG_HEX | CMD_ATTRIBUTE);
+    body.extend(interned_new("v"));
+    body.extend(i64_be(0xDEADBEEFCAFEBABE_u64 as i64));
+    body.push(CMD_END_DOCUMENT);
+
+    let data = with_magic(&body);
+    let mut p = AbxParser::new(&data).unwrap();
+    let _ = p.next_event().unwrap();
+    let ev = p.next_event().unwrap().unwrap();
+
+    if let Event::StartTag { attributes, .. } = ev {
+        assert_eq!(attributes[0].value, AttributeValue::LongHex(0xDEADBEEFCAFEBABE));
+        assert_eq!(attributes[0].value.as_str(), "-2152411035014542");
+    } else {
+        panic!();
+    }
+}
+
+#[test]
 fn test_long_attribute() {
     let v: i64 = 9_876_543_210;
     let mut body = vec![CMD_START_DOCUMENT];

@@ -4,6 +4,18 @@
 
 use base64::Engine as _;
 
+/// Renders a hex-typed attribute value like AOSP's `Integer.toString(v, 16)`/
+/// `Long.toString(v, 16)`: `v` is signed, so a negative value renders as
+/// `-` + hex(magnitude), not the raw bit pattern (e.g. `0xCAFEBABE` is
+/// `"-35014542"`, not `"cafebabe"`).
+fn format_signed_hex(v: i64) -> String {
+    if v < 0 {
+        format!("-{:x}", v.unsigned_abs())
+    } else {
+        format!("{v:x}")
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Typed attribute value
 // ---------------------------------------------------------------------------
@@ -39,21 +51,9 @@ impl AttributeValue {
                 Cow::Owned(base64::engine::general_purpose::STANDARD.encode(b))
             }
             AttributeValue::Int(v) => Cow::Owned(v.to_string()),
-            AttributeValue::IntHex(v) => {
-                if *v == u32::MAX {
-                    Cow::Owned("-1".to_string())
-                } else {
-                    Cow::Owned(format!("{:x}", v))
-                }
-            }
+            AttributeValue::IntHex(v) => Cow::Owned(format_signed_hex(*v as i32 as i64)),
             AttributeValue::Long(v) => Cow::Owned(v.to_string()),
-            AttributeValue::LongHex(v) => {
-                if *v == u64::MAX {
-                    Cow::Owned("-1".to_string())
-                } else {
-                    Cow::Owned(format!("{:x}", v))
-                }
-            }
+            AttributeValue::LongHex(v) => Cow::Owned(format_signed_hex(*v as i64)),
             AttributeValue::Float(v) => {
                 if v.fract() == 0.0 && v.is_finite() {
                     Cow::Owned(format!("{:.1}", v))
@@ -202,21 +202,13 @@ fn push_attr_value(buf: &mut String, value: &AttributeValue) {
             let _ = write!(buf, "{v}");
         }
         AttributeValue::IntHex(v) => {
-            if *v == u32::MAX {
-                buf.push_str("-1");
-            } else {
-                let _ = write!(buf, "{v:x}");
-            }
+            let _ = write!(buf, "{}", format_signed_hex(*v as i32 as i64));
         }
         AttributeValue::Long(v) => {
             let _ = write!(buf, "{v}");
         }
         AttributeValue::LongHex(v) => {
-            if *v == u64::MAX {
-                buf.push_str("-1");
-            } else {
-                let _ = write!(buf, "{v:x}");
-            }
+            let _ = write!(buf, "{}", format_signed_hex(*v as i64));
         }
         AttributeValue::Float(v) => {
             if v.fract() == 0.0 && v.is_finite() {
