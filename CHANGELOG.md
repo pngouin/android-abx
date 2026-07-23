@@ -4,6 +4,30 @@ All notable changes to this project are documented in this file, generated
 automatically from [Conventional Commits](https://www.conventionalcommits.org/)
 history by [git-cliff](https://git-cliff.org/).
 
+## [0.2.1] - 2026-07-23
+
+### Features
+
+- *(decode)* Add AbxParser::write_xml for parity with AbxStreamParser
+
+
+### Performance
+
+- *(decode)* Stop AbxStreamParser from compacting on every event
+
+
+### Documentation
+
+- *(changelog)* Update CHANGELOG.md for v0.2.0
+
+- *(readme)* Refresh Benchmarks section after streaming decode fix
+
+
+### Miscellaneous Tasks
+
+- *(release)* Bump version to 0.2.1
+
+
 ## [0.2.0] - 2026-07-23
 
 ### Bug Fixes
