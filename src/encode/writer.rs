@@ -82,9 +82,9 @@ impl InternedPool {
 /// Errors (rather than truncating the `u16` length prefix, which would
 /// silently corrupt the stream for anything written after) when `bytes` is
 /// longer than a `u16` length can express — same boundary and same
-/// reject-don't-truncate behavior as AOSP's `writeUTF()`.
-fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
-    let bytes = s.as_bytes();
+/// reject-don't-truncate behavior as AOSP's `writeUTF()`/
+/// `attributeBytesHex`/`attributeBytesBase64` length checks.
+fn write_bytes_blob(out: &mut impl Write, bytes: &[u8]) -> Result<()> {
     if bytes.len() > MAX_UNSIGNED_SHORT {
         return Err(AbxError::ValueTooLong {
             len: bytes.len(),
@@ -96,19 +96,9 @@ fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
     Ok(())
 }
 
-/// See [`write_utf`] — same overflow check, for raw byte blobs
-/// (`BytesHex`/`BytesBase64`), matching AOSP's `attributeBytesHex`/
-/// `attributeBytesBase64` length checks.
-fn write_bytes_blob(out: &mut impl Write, bytes: &[u8]) -> Result<()> {
-    if bytes.len() > MAX_UNSIGNED_SHORT {
-        return Err(AbxError::ValueTooLong {
-            len: bytes.len(),
-            max: MAX_UNSIGNED_SHORT,
-        });
-    }
-    out.write_all(&(bytes.len() as u16).to_be_bytes())?;
-    out.write_all(bytes)?;
-    Ok(())
+/// See [`write_bytes_blob`] — same overflow check, for a UTF-8 string.
+fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
+    write_bytes_blob(out, s.as_bytes())
 }
 
 /// Encodes [`Event`]s to any `W: Write` sink. `Vec<u8>` covers the
