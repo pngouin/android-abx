@@ -275,21 +275,25 @@ than trusting these):
 
 | Benchmark | Time |
 |---|---|
-| `parse_events/AbxParser` | 2.32ms |
-| `parse_events/AbxStreamParser` | 4.08ms |
-| `to_xml/AbxParser` | 2.04ms |
-| `deserialize_all/AbxParser` | 2.21ms |
-| `deserialize_iter` (streaming) | 4.04ms |
+| `parse_events/AbxParser` | 2.71ms |
+| `parse_events/AbxStreamParser` | 3.04ms |
+| `to_xml/AbxParser` | 2.24ms |
+| `deserialize_all/AbxParser` | 2.33ms |
+| `deserialize_iter` (streaming) | 2.74ms |
 | `events_to_abx/AbxWriter` | 341µs |
-| `xml_to_abx` | 2.41ms |
+| `xml_to_abx` | 2.56ms |
 
-`AbxParser` beats `AbxStreamParser` by roughly 1.3–1.8x, expected given the
-ring buffer's bookkeeping over a zero-copy slice. The serde layer's
-overhead over raw event walking is negligible. `xml_to_abx` is dominated by
-`quick-xml`'s tokenizer, not this crate's own encoding — `events_to_abx`
-alone is ~7x faster than the full XML-text pipeline at the same size.
+`AbxParser` beats `AbxStreamParser` by roughly 1.1–1.2x, the expected
+irreducible cost of the ring buffer's bookkeeping over a zero-copy slice.
+The serde layer's overhead over raw event walking is negligible — for the
+streaming parser it's actually *faster* than collecting every raw `Event`
+into a `Vec`, since `deserialize_iter` only retains the small deserialized
+struct per element instead of every event's owned strings. `xml_to_abx` is
+dominated by `quick-xml`'s tokenizer, not this crate's own encoding —
+`events_to_abx` alone is ~7.5x faster than the full XML-text pipeline at
+the same size.
 
-Two optimization passes came out of these benchmarks:
+Three optimization passes came out of these benchmarks:
 
 - **Decode**: skipped a per-element `HashSet` allocation in the serde
   layer that was unused for flat elements (`deserialize_all` ~15–19%
@@ -307,6 +311,15 @@ Two optimization passes came out of these benchmarks:
   names went from milliseconds to 49 seconds. Fixed with a hybrid: linear
   scan below 32 unique names, `HashMap` past that — ~41% faster than the
   original rather than the riskier ~48%.
+- **Streaming decode**: `AbxStreamParser`'s ring buffer was compacting
+  (sliding unconsumed bytes to the front) on *every* call that checked
+  buffer capacity, not just the ones that actually needed to refill from
+  the reader — so nearly every event paid for a memmove of the whole
+  unconsumed buffer tail even when nothing needed to be read. Gating
+  compaction behind an "is a refill actually about to happen?" check
+  dropped `parse_events`/`to_xml`/`deserialize_all` on `AbxStreamParser`
+  by 26–34% and shrank its gap against `AbxParser` from ~1.5–1.8x down to
+  the ~1.1–1.2x above.
 
 ## Feature flags
 
