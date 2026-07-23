@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: fmt
+        pass_filenames: false
+        args: ["--all"]
+      - id: clippy
+        args: ["--all-targets", "--all-features", "--", "-D", "warnings"]
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
