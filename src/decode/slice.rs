@@ -134,7 +134,7 @@ impl<'a> AbxParser<'a> {
         match type_nibble {
             TYPE_NULL => Ok(AttributeValue::Null),
             TYPE_STRING => Ok(AttributeValue::String(self.read_utf()?)),
-            TYPE_STRING_INTERNED => Ok(AttributeValue::String(self.read_interned()?.to_string())),
+            TYPE_STRING_INTERNED => Ok(AttributeValue::String(String::from(self.read_interned()?))),
             TYPE_BYTES_HEX => Ok(AttributeValue::BytesHex(self.read_bytes_blob()?)),
             TYPE_BYTES_BASE64 => Ok(AttributeValue::BytesBase64(self.read_bytes_blob()?)),
             TYPE_INT => Ok(AttributeValue::Int(self.read_i32()?)),
@@ -167,7 +167,7 @@ impl<'a> AbxParser<'a> {
 
             CMD_START_TAG => {
                 let name = self.read_interned()?;
-                let mut attributes = Vec::new();
+                let mut attributes = Vec::with_capacity(4);
                 loop {
                     if self.rest.is_empty() {
                         break;

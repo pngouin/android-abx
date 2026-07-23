@@ -228,23 +228,23 @@ pub enum Event {
 }
 
 pub(crate) fn xml_escape(s: &str) -> std::borrow::Cow<'_, str> {
-    if s.bytes()
-        .any(|c| matches!(c, b'<' | b'>' | b'&' | b'"' | b'\''))
-    {
-        let mut out = String::with_capacity(s.len() + 8);
-        for c in s.chars() {
-            match c {
-                '<' => out.push_str("&lt;"),
-                '>' => out.push_str("&gt;"),
-                '&' => out.push_str("&amp;"),
-                '"' => out.push_str("&quot;"),
-                '\'' => out.push_str("&apos;"),
-                other => out.push(other),
+    match s.find(['<', '>', '&', '"', '\'']) {
+        None => std::borrow::Cow::Borrowed(s),
+        Some(first) => {
+            let mut out = String::with_capacity(s.len() + 8);
+            out.push_str(&s[..first]);
+            for c in s[first..].chars() {
+                match c {
+                    '<' => out.push_str("&lt;"),
+                    '>' => out.push_str("&gt;"),
+                    '&' => out.push_str("&amp;"),
+                    '"' => out.push_str("&quot;"),
+                    '\'' => out.push_str("&apos;"),
+                    other => out.push(other),
+                }
             }
+            std::borrow::Cow::Owned(out)
         }
-        std::borrow::Cow::Owned(out)
-    } else {
-        std::borrow::Cow::Borrowed(s)
     }
 }
 

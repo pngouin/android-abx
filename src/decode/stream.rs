@@ -129,6 +129,15 @@ impl<R: Read> AbxStreamParser<R> {
     /// underlying reader until we have at least `needed` bytes available, or
     /// until EOF.
     fn ensure(&mut self, needed: usize) -> Result<()> {
+        // Bail out before touching the buffer at all when nothing needs to
+        // be read: this is called on every event (and every string/blob
+        // read), so compacting unconditionally here turned every one of
+        // those calls into an O(available()) memmove even when no refill
+        // was going to happen.
+        if self.available() >= needed || self.eof {
+            return Ok(());
+        }
+
         // Compact first so we always have room at the back.
         if self.pos > 0 {
             self.buf.copy_within(self.pos..self.len, 0);
@@ -261,7 +270,7 @@ impl<R: Read> AbxStreamParser<R> {
         match type_nibble {
             TYPE_NULL => Ok(AttributeValue::Null),
             TYPE_STRING => Ok(AttributeValue::String(self.read_utf()?)),
-            TYPE_STRING_INTERNED => Ok(AttributeValue::String(self.read_interned()?.to_string())),
+            TYPE_STRING_INTERNED => Ok(AttributeValue::String(String::from(self.read_interned()?))),
             TYPE_BYTES_HEX => Ok(AttributeValue::BytesHex(self.read_bytes_blob()?)),
             TYPE_BYTES_BASE64 => Ok(AttributeValue::BytesBase64(self.read_bytes_blob()?)),
             TYPE_INT => Ok(AttributeValue::Int(self.read_i32()?)),
@@ -308,7 +317,7 @@ impl<R: Read> AbxStreamParser<R> {
 
             CMD_START_TAG => {
                 let name = self.read_interned()?;
-                let mut attributes = Vec::new();
+                let mut attributes = Vec::with_capacity(4);
 
                 // Eagerly consume following ATTRIBUTE tokens without peeking
                 // across I/O boundaries more than necessary.
