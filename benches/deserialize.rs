@@ -8,7 +8,7 @@
 use std::io::Cursor;
 
 use abx::{AbxParser, AbxStreamParser};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use serde::Deserialize;
 
 mod common;
@@ -56,7 +56,11 @@ fn bench_streaming_deserialize_vs_raw_events(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("deserialize_iter", n), &data, |b, data| {
             b.iter(|| {
                 let mut p = AbxStreamParser::new(Cursor::new(black_box(data.clone()))).unwrap();
-                black_box(p.deserialize_iter::<Pkg>("pkg").collect::<abx::Result<Vec<Pkg>>>().unwrap())
+                black_box(
+                    p.deserialize_iter::<Pkg>("pkg")
+                        .collect::<abx::Result<Vec<Pkg>>>()
+                        .unwrap(),
+                )
             });
         });
 
@@ -70,5 +74,9 @@ fn bench_streaming_deserialize_vs_raw_events(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_deserialize_all, bench_streaming_deserialize_vs_raw_events);
+criterion_group!(
+    benches,
+    bench_deserialize_all,
+    bench_streaming_deserialize_vs_raw_events
+);
 criterion_main!(benches);

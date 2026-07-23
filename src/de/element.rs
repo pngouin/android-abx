@@ -9,9 +9,9 @@ use serde::de::{DeserializeSeed, Deserializer, MapAccess, Visitor};
 
 use crate::{AbxError, Attribute, InternedStr, Result};
 
+use super::TEXT_FIELD;
 use super::traversal::ElementData;
 use super::value::{FieldValue, ValueDeserializer};
-use super::TEXT_FIELD;
 
 /// Generates `Deserializer` methods that try `FromStr` on the leaf text
 /// before falling back to `deserialize_any` — element text is always a
@@ -47,7 +47,11 @@ pub(crate) struct ElementDeserializer<'de> {
 
 impl<'de> ElementDeserializer<'de> {
     pub(crate) fn from_data(data: &'de ElementData) -> Self {
-        ElementDeserializer { attributes: &data.attributes, text: data.text.as_deref(), children: &data.children }
+        ElementDeserializer {
+            attributes: &data.attributes,
+            text: data.text.as_deref(),
+            children: &data.children,
+        }
     }
 }
 
@@ -74,7 +78,8 @@ impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
         let children = if self.children.is_empty() {
             Vec::new()
         } else {
-            let attr_names: HashSet<&str> = self.attributes.iter().map(|a| a.name.as_str()).collect();
+            let attr_names: HashSet<&str> =
+                self.attributes.iter().map(|a| a.name.as_str()).collect();
             group_children(self.children, &attr_names)
         };
         let text_shadowed = self.text.is_some()

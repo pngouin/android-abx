@@ -93,35 +93,67 @@ impl AttributeValue {
 
     /// Returns the inner string if this is [`AttributeValue::String`], else `None`.
     pub fn as_string(&self) -> Option<&str> {
-        if let AttributeValue::String(s) = self { Some(s) } else { None }
+        if let AttributeValue::String(s) = self {
+            Some(s)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::Int`], else `None`.
     pub fn as_int(&self) -> Option<i32> {
-        if let AttributeValue::Int(v) = self { Some(*v) } else { None }
+        if let AttributeValue::Int(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::IntHex`], else `None`.
     pub fn as_int_hex(&self) -> Option<u32> {
-        if let AttributeValue::IntHex(v) = self { Some(*v) } else { None }
+        if let AttributeValue::IntHex(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::Long`], else `None`.
     pub fn as_long(&self) -> Option<i64> {
-        if let AttributeValue::Long(v) = self { Some(*v) } else { None }
+        if let AttributeValue::Long(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::LongHex`], else `None`.
     pub fn as_long_hex(&self) -> Option<u64> {
-        if let AttributeValue::LongHex(v) = self { Some(*v) } else { None }
+        if let AttributeValue::LongHex(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::Float`], else `None`.
     pub fn as_float(&self) -> Option<f32> {
-        if let AttributeValue::Float(v) = self { Some(*v) } else { None }
+        if let AttributeValue::Float(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::Double`], else `None`.
     pub fn as_double(&self) -> Option<f64> {
-        if let AttributeValue::Double(v) = self { Some(*v) } else { None }
+        if let AttributeValue::Double(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
     }
     /// Returns the inner value if this is [`AttributeValue::Boolean`], else `None`.
     pub fn as_bool(&self) -> Option<bool> {
-        if let AttributeValue::Boolean(b) = self { Some(*b) } else { None }
+        if let AttributeValue::Boolean(b) = self {
+            Some(*b)
+        } else {
+            None
+        }
     }
     /// Returns the inner bytes if this is [`AttributeValue::BytesHex`] or
     /// [`AttributeValue::BytesBase64`], else `None`.
@@ -216,14 +248,16 @@ pub enum Event {
 // ---------------------------------------------------------------------------
 
 pub(crate) fn xml_escape(s: &str) -> std::borrow::Cow<'_, str> {
-    if s.bytes().any(|c| matches!(c, b'<' | b'>' | b'&' | b'"' | b'\'')) {
+    if s.bytes()
+        .any(|c| matches!(c, b'<' | b'>' | b'&' | b'"' | b'\''))
+    {
         let mut out = String::with_capacity(s.len() + 8);
         for c in s.chars() {
             match c {
-                '<'  => out.push_str("&lt;"),
-                '>'  => out.push_str("&gt;"),
-                '&'  => out.push_str("&amp;"),
-                '"'  => out.push_str("&quot;"),
+                '<' => out.push_str("&lt;"),
+                '>' => out.push_str("&gt;"),
+                '&' => out.push_str("&amp;"),
+                '"' => out.push_str("&quot;"),
                 '\'' => out.push_str("&apos;"),
                 other => out.push(other),
             }

@@ -8,7 +8,7 @@
 use std::io::Cursor;
 
 use abx::{AbxParser, AbxStreamParser};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 
 mod common;
 use common::synthetic_document;
@@ -83,5 +83,10 @@ fn bench_to_xml(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_parse_events, bench_parse_real_fixture, bench_to_xml);
+criterion_group!(
+    benches,
+    bench_parse_events,
+    bench_parse_real_fixture,
+    bench_to_xml
+);
 criterion_main!(benches);

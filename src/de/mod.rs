@@ -87,8 +87,15 @@ impl de::Error for AbxError {
 /// available through [`crate::AbxParser::deserialize_next`] and
 /// [`crate::AbxStreamParser::deserialize_next`], which build the child tree
 /// by walking the event stream.
-pub fn from_element<T: DeserializeOwned>(attributes: &[Attribute], text: Option<&str>) -> Result<T> {
-    T::deserialize(element::ElementDeserializer { attributes, text, children: &[] })
+pub fn from_element<T: DeserializeOwned>(
+    attributes: &[Attribute],
+    text: Option<&str>,
+) -> Result<T> {
+    T::deserialize(element::ElementDeserializer {
+        attributes,
+        text,
+        children: &[],
+    })
 }
 
 /// Deserialize an entire in-memory ABX document into `T`, using its root

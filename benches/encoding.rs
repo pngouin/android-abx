@@ -3,8 +3,8 @@
 //!
 //! Run with: `cargo bench --bench encoding`
 
-use abx::{events_to_abx, AbxParser};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use abx::{AbxParser, events_to_abx};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 
 mod common;
 use common::synthetic_events;

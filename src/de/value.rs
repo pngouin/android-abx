@@ -59,7 +59,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
             FieldValue::Attr(v) => match v {
                 AttributeValue::Null => visitor.visit_unit(),
                 AttributeValue::String(s) => visitor.visit_str(s),
-                AttributeValue::BytesHex(b) | AttributeValue::BytesBase64(b) => visitor.visit_bytes(b),
+                AttributeValue::BytesHex(b) | AttributeValue::BytesBase64(b) => {
+                    visitor.visit_bytes(b)
+                }
                 AttributeValue::Int(n) => visitor.visit_i32(*n),
                 AttributeValue::IntHex(n) => visitor.visit_u32(*n),
                 AttributeValue::Long(n) => visitor.visit_i64(*n),
@@ -71,7 +73,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
             // A singular (non-Vec) target field: use the first matching
             // child, delegating to ElementDeserializer's own leaf-or-struct
             // logic (so a text-only child still collapses to a scalar).
-            FieldValue::Children(items) => ElementDeserializer::from_data(items[0]).deserialize_any(visitor),
+            FieldValue::Children(items) => {
+                ElementDeserializer::from_data(items[0]).deserialize_any(visitor)
+            }
         }
     }
 
@@ -92,7 +96,8 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
         match &self.0 {
             FieldValue::Attr(AttributeValue::BytesHex(b) | AttributeValue::BytesBase64(b)) => {
-                return de::value::SeqDeserializer::<_, AbxError>::new(b.iter().copied()).deserialize_seq(visitor);
+                return de::value::SeqDeserializer::<_, AbxError>::new(b.iter().copied())
+                    .deserialize_seq(visitor);
             }
             FieldValue::Children(items) => {
                 return visitor.visit_seq(ChildSeqAccess { iter: items.iter() });
@@ -116,7 +121,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     ) -> Result<V::Value> {
         use de::IntoDeserializer;
         match self.0 {
-            FieldValue::Text(s) => visitor.visit_enum(IntoDeserializer::<AbxError>::into_deserializer(s)),
+            FieldValue::Text(s) => {
+                visitor.visit_enum(IntoDeserializer::<AbxError>::into_deserializer(s))
+            }
             FieldValue::Attr(AttributeValue::String(s)) => {
                 visitor.visit_enum(IntoDeserializer::<AbxError>::into_deserializer(s.as_str()))
             }
@@ -158,7 +165,9 @@ impl<'a, 'de> SeqAccess<'de> for ChildSeqAccess<'a, 'de> {
 
     fn next_element_seed<T: DeserializeSeed<'de>>(&mut self, seed: T) -> Result<Option<T::Value>> {
         match self.iter.next() {
-            Some(&data) => seed.deserialize(ElementDeserializer::from_data(data)).map(Some),
+            Some(&data) => seed
+                .deserialize(ElementDeserializer::from_data(data))
+                .map(Some),
             None => Ok(None),
         }
     }

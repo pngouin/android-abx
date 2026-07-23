@@ -18,10 +18,14 @@ fn assert_single_attr_roundtrip(value: AttributeValue, attr_bytes: Vec<u8>) {
     w.write_event(&Event::StartDocument).unwrap();
     w.write_event(&Event::StartTag {
         name: "tag".into(),
-        attributes: vec![Attribute { name: "a".into(), value }],
+        attributes: vec![Attribute {
+            name: "a".into(),
+            value,
+        }],
     })
     .unwrap();
-    w.write_event(&Event::EndTag { name: "tag".into() }).unwrap();
+    w.write_event(&Event::EndTag { name: "tag".into() })
+        .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
     let mut start = common::start_tag("tag");
@@ -57,8 +61,15 @@ fn interned_backref(cmd: u8, idx: u16) -> Vec<u8> {
 fn writer_encodes_start_and_end_tag() {
     let mut w = AbxWriter::new(Vec::new()).unwrap();
     w.write_event(&Event::StartDocument).unwrap();
-    w.write_event(&Event::StartTag { name: "root".into(), attributes: vec![] }).unwrap();
-    w.write_event(&Event::EndTag { name: "root".into() }).unwrap();
+    w.write_event(&Event::StartTag {
+        name: "root".into(),
+        attributes: vec![],
+    })
+    .unwrap();
+    w.write_event(&Event::EndTag {
+        name: "root".into(),
+    })
+    .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
     // "root" is interned fresh by StartTag; EndTag repeats the same name,
@@ -74,10 +85,20 @@ fn writer_encodes_start_and_end_tag() {
 fn writer_interns_repeated_tag_name() {
     let mut w = AbxWriter::new(Vec::new()).unwrap();
     w.write_event(&Event::StartDocument).unwrap();
-    w.write_event(&Event::StartTag { name: "pkg".into(), attributes: vec![] }).unwrap();
-    w.write_event(&Event::EndTag { name: "pkg".into() }).unwrap();
-    w.write_event(&Event::StartTag { name: "pkg".into(), attributes: vec![] }).unwrap();
-    w.write_event(&Event::EndTag { name: "pkg".into() }).unwrap();
+    w.write_event(&Event::StartTag {
+        name: "pkg".into(),
+        attributes: vec![],
+    })
+    .unwrap();
+    w.write_event(&Event::EndTag { name: "pkg".into() })
+        .unwrap();
+    w.write_event(&Event::StartTag {
+        name: "pkg".into(),
+        attributes: vec![],
+    })
+    .unwrap();
+    w.write_event(&Event::EndTag { name: "pkg".into() })
+        .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
     // Only the very first "pkg" occurrence is fresh; every occurrence after
@@ -127,12 +148,18 @@ fn writer_encodes_attr_int() {
 
 #[test]
 fn writer_encodes_attr_int_hex() {
-    assert_single_attr_roundtrip(AttributeValue::IntHex(0xCAFEBABE), common::attr_int_hex("a", 0xCAFEBABE));
+    assert_single_attr_roundtrip(
+        AttributeValue::IntHex(0xCAFEBABE),
+        common::attr_int_hex("a", 0xCAFEBABE),
+    );
 }
 
 #[test]
 fn writer_encodes_attr_long() {
-    assert_single_attr_roundtrip(AttributeValue::Long(-123456789012), common::attr_long("a", -123456789012));
+    assert_single_attr_roundtrip(
+        AttributeValue::Long(-123456789012),
+        common::attr_long("a", -123456789012),
+    );
 }
 
 #[test]
@@ -150,7 +177,10 @@ fn writer_encodes_attr_float() {
 
 #[test]
 fn writer_encodes_attr_double() {
-    assert_single_attr_roundtrip(AttributeValue::Double(2.71828), common::attr_double("a", 2.71828));
+    assert_single_attr_roundtrip(
+        AttributeValue::Double(2.71828),
+        common::attr_double("a", 2.71828),
+    );
 }
 
 #[test]
@@ -160,7 +190,10 @@ fn writer_encodes_attr_boolean_true() {
 
 #[test]
 fn writer_encodes_attr_boolean_false() {
-    assert_single_attr_roundtrip(AttributeValue::Boolean(false), common::attr_bool("a", false));
+    assert_single_attr_roundtrip(
+        AttributeValue::Boolean(false),
+        common::attr_bool("a", false),
+    );
 }
 
 #[test]
@@ -172,12 +205,19 @@ fn writer_does_not_intern_repeated_attribute_string_value() {
     w.write_event(&Event::StartTag {
         name: "tag".into(),
         attributes: vec![
-            Attribute { name: "a".into(), value: AttributeValue::String("dup".into()) },
-            Attribute { name: "b".into(), value: AttributeValue::String("dup".into()) },
+            Attribute {
+                name: "a".into(),
+                value: AttributeValue::String("dup".into()),
+            },
+            Attribute {
+                name: "b".into(),
+                value: AttributeValue::String("dup".into()),
+            },
         ],
     })
     .unwrap();
-    w.write_event(&Event::EndTag { name: "tag".into() }).unwrap();
+    w.write_event(&Event::EndTag { name: "tag".into() })
+        .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
     let mut start = common::start_tag("tag");
@@ -198,7 +238,11 @@ fn assert_text_like_roundtrip(cmd: u8, make_event: impl Fn(String) -> Event) {
         w.write_event(&Event::EndDocument).unwrap();
 
         let expected = common::document(&[common::text_token(cmd, s)]);
-        assert_eq!(w.into_inner(), expected, "mismatch for cmd {cmd:#x} with {s:?}");
+        assert_eq!(
+            w.into_inner(),
+            expected,
+            "mismatch for cmd {cmd:#x} with {s:?}"
+        );
     }
 }
 
@@ -219,7 +263,10 @@ fn writer_encodes_comment() {
 
 #[test]
 fn writer_encodes_processing_instruction() {
-    assert_text_like_roundtrip(common::CMD_PROCESSING_INSTRUCTION, Event::ProcessingInstruction);
+    assert_text_like_roundtrip(
+        common::CMD_PROCESSING_INSTRUCTION,
+        Event::ProcessingInstruction,
+    );
 }
 
 #[test]
@@ -241,22 +288,36 @@ fn writer_encodes_docdecl() {
 fn events_to_abx_round_trips_through_decoder() {
     let events = vec![
         Event::StartDocument,
-        Event::StartTag { name: "packages".into(), attributes: vec![] },
+        Event::StartTag {
+            name: "packages".into(),
+            attributes: vec![],
+        },
         Event::StartTag {
             name: "pkg".into(),
             attributes: vec![
-                Attribute { name: "name".into(), value: AttributeValue::String("com.example.app".into()) },
-                Attribute { name: "version".into(), value: AttributeValue::Int(3) },
+                Attribute {
+                    name: "name".into(),
+                    value: AttributeValue::String("com.example.app".into()),
+                },
+                Attribute {
+                    name: "version".into(),
+                    value: AttributeValue::Int(3),
+                },
             ],
         },
         Event::Text("hello".into()),
         Event::EndTag { name: "pkg".into() },
-        Event::EndTag { name: "packages".into() },
+        Event::EndTag {
+            name: "packages".into(),
+        },
         Event::EndDocument,
     ];
 
     let bytes = abx::events_to_abx(&events).unwrap();
-    let decoded = abx::AbxParser::new(&bytes).unwrap().collect_events().unwrap();
+    let decoded = abx::AbxParser::new(&bytes)
+        .unwrap()
+        .collect_events()
+        .unwrap();
     assert_eq!(decoded, events);
 }
 
@@ -271,7 +332,10 @@ fn writer_encodes_string_at_max_length_boundary() {
     w.write_event(&Event::EndDocument).unwrap();
 
     let bytes = w.into_inner();
-    let evs = abx::AbxParser::new(&bytes).unwrap().collect_events().unwrap();
+    let evs = abx::AbxParser::new(&bytes)
+        .unwrap()
+        .collect_events()
+        .unwrap();
     assert_eq!(evs[1], Event::Text(s));
 }
 
@@ -286,7 +350,13 @@ fn writer_errors_on_oversized_text() {
     let mut w = AbxWriter::new(Vec::new()).unwrap();
     w.write_event(&Event::StartDocument).unwrap();
     let err = w.write_event(&Event::Text(s)).unwrap_err();
-    assert!(matches!(err, abx::AbxError::ValueTooLong { len: 65_536, max: 65_535 }));
+    assert!(matches!(
+        err,
+        abx::AbxError::ValueTooLong {
+            len: 65_536,
+            max: 65_535
+        }
+    ));
 }
 
 /// Same boundary as `writer_errors_on_oversized_text`, via an attribute's
@@ -299,10 +369,19 @@ fn writer_errors_on_oversized_attr_string() {
     let err = w
         .write_event(&Event::StartTag {
             name: "tag".into(),
-            attributes: vec![Attribute { name: "a".into(), value: AttributeValue::String(s) }],
+            attributes: vec![Attribute {
+                name: "a".into(),
+                value: AttributeValue::String(s),
+            }],
         })
         .unwrap_err();
-    assert!(matches!(err, abx::AbxError::ValueTooLong { len: 65_536, max: 65_535 }));
+    assert!(matches!(
+        err,
+        abx::AbxError::ValueTooLong {
+            len: 65_536,
+            max: 65_535
+        }
+    ));
 }
 
 /// Matches AOSP's `BinaryXmlSerializer.attributeBytesHex`/
@@ -316,10 +395,19 @@ fn writer_errors_on_oversized_bytes_blob() {
     let err = w
         .write_event(&Event::StartTag {
             name: "tag".into(),
-            attributes: vec![Attribute { name: "a".into(), value: AttributeValue::BytesHex(b) }],
+            attributes: vec![Attribute {
+                name: "a".into(),
+                value: AttributeValue::BytesHex(b),
+            }],
         })
         .unwrap_err();
-    assert!(matches!(err, abx::AbxError::ValueTooLong { len: 65_536, max: 65_535 }));
+    assert!(matches!(
+        err,
+        abx::AbxError::ValueTooLong {
+            len: 65_536,
+            max: 65_535
+        }
+    ));
 }
 
 #[test]
@@ -332,17 +420,41 @@ fn writer_gracefully_degrades_past_interned_pool_limit() {
     // Fill every valid index (0..=0xFFFE = 0xFFFF entries) -- 0xFFFF itself
     // is reserved as the INTERNED_NEW sentinel.
     for i in 0..0xFFFFu32 {
-        w.write_event(&Event::StartTag { name: format!("n{i}").into(), attributes: vec![] }).unwrap();
+        w.write_event(&Event::StartTag {
+            name: format!("n{i}").into(),
+            attributes: vec![],
+        })
+        .unwrap();
     }
     // Past the cap: a brand-new name, then a repeat of a pre-cap name.
-    w.write_event(&Event::StartTag { name: "over".into(), attributes: vec![] }).unwrap();
-    w.write_event(&Event::StartTag { name: "n0".into(), attributes: vec![] }).unwrap();
+    w.write_event(&Event::StartTag {
+        name: "over".into(),
+        attributes: vec![],
+    })
+    .unwrap();
+    w.write_event(&Event::StartTag {
+        name: "n0".into(),
+        attributes: vec![],
+    })
+    .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
-    let events = abx::AbxParser::new(&w.into_inner()).unwrap().collect_events().unwrap();
+    let events = abx::AbxParser::new(&w.into_inner())
+        .unwrap()
+        .collect_events()
+        .unwrap();
     assert_eq!(
         events[events.len() - 3],
-        Event::StartTag { name: "over".into(), attributes: vec![] }
+        Event::StartTag {
+            name: "over".into(),
+            attributes: vec![]
+        }
     );
-    assert_eq!(events[events.len() - 2], Event::StartTag { name: "n0".into(), attributes: vec![] });
+    assert_eq!(
+        events[events.len() - 2],
+        Event::StartTag {
+            name: "n0".into(),
+            attributes: vec![]
+        }
+    );
 }

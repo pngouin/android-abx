@@ -12,9 +12,9 @@
 //! `Event::EntityReference`. `IgnorableWhitespace` is never produced:
 //! whitespace-only runs are preserved literally as `Text`.
 
+use quick_xml::XmlVersion;
 use quick_xml::events::{BytesStart, Event as XmlEvent};
 use quick_xml::reader::Reader;
-use quick_xml::XmlVersion;
 
 use super::AbxWriter;
 use crate::{AbxError, Attribute, AttributeValue, Event, InternedStr, Result};
@@ -32,7 +32,9 @@ fn start_tag_attributes(start: &BytesStart) -> Result<Vec<Attribute>> {
     for attr in start.attributes() {
         let attr = attr.map_err(xml_err)?;
         let name = utf8(attr.key.as_ref())?;
-        let value = attr.normalized_value(XmlVersion::Implicit1_0).map_err(xml_err)?;
+        let value = attr
+            .normalized_value(XmlVersion::Implicit1_0)
+            .map_err(xml_err)?;
         attributes.push(Attribute {
             name: InternedStr::from(name),
             value: AttributeValue::String(value.into_owned()),
@@ -54,12 +56,18 @@ pub fn xml_to_abx(xml: &str) -> Result<Vec<u8>> {
             XmlEvent::Start(start) => {
                 let name = utf8(start.name().as_ref())?.to_string();
                 let attributes = start_tag_attributes(&start)?;
-                w.write_event(&Event::StartTag { name: name.into(), attributes })?;
+                w.write_event(&Event::StartTag {
+                    name: name.into(),
+                    attributes,
+                })?;
             }
             XmlEvent::Empty(start) => {
                 let name: InternedStr = utf8(start.name().as_ref())?.into();
                 let attributes = start_tag_attributes(&start)?;
-                w.write_event(&Event::StartTag { name: name.clone(), attributes })?;
+                w.write_event(&Event::StartTag {
+                    name: name.clone(),
+                    attributes,
+                })?;
                 w.write_event(&Event::EndTag { name })?;
             }
             XmlEvent::End(end) => {

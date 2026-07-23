@@ -68,7 +68,9 @@ where
                 return deserialize_started_element(source, attributes);
             }
             Some(Event::EndDocument) | None => {
-                return Err(AbxError::Deserialization("no root element found in document".to_string()));
+                return Err(AbxError::Deserialization(
+                    "no root element found in document".to_string(),
+                ));
             }
             _ => {}
         }
@@ -83,7 +85,11 @@ where
     T: DeserializeOwned,
 {
     let (text, children) = read_element_body(source)?;
-    let de = ElementDeserializer { attributes: &attributes, text: text.as_deref(), children: &children };
+    let de = ElementDeserializer {
+        attributes: &attributes,
+        text: text.as_deref(),
+        children: &children,
+    };
     T::deserialize(de)
 }
 
@@ -110,7 +116,14 @@ fn read_element_body<S: EventSource>(source: &mut S) -> Result<(Option<String>, 
         match source.next_event()? {
             Some(Event::StartTag { name, attributes }) => {
                 let (child_text, child_children) = read_element_body(source)?;
-                children.push((name, ElementData { attributes, text: child_text, children: child_children }));
+                children.push((
+                    name,
+                    ElementData {
+                        attributes,
+                        text: child_text,
+                        children: child_children,
+                    },
+                ));
             }
             // Doesn't check the end tag's name against the element being
             // closed: real AOSP's own BinaryXmlPullParser.nextToken() reads

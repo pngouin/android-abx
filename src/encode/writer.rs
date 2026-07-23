@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::{AbxError, Attribute, AttributeValue, Event, InternedStr, Result, MAGIC};
+use crate::{AbxError, Attribute, AttributeValue, Event, InternedStr, MAGIC, Result};
 use crate::{
     CMD_ATTRIBUTE, CMD_CDSECT, CMD_COMMENT, CMD_DOCDECL, CMD_END_DOCUMENT, CMD_END_TAG,
     CMD_ENTITY_REF, CMD_IGNORABLE_WHITESPACE, CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT,
@@ -41,7 +41,10 @@ struct InternedPool {
 
 impl InternedPool {
     fn new() -> Self {
-        InternedPool { names: Vec::new(), index: None }
+        InternedPool {
+            names: Vec::new(),
+            index: None,
+        }
     }
 
     fn find(&self, s: &InternedStr) -> Option<u16> {
@@ -83,7 +86,10 @@ impl InternedPool {
 fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
     let bytes = s.as_bytes();
     if bytes.len() > MAX_UNSIGNED_SHORT {
-        return Err(AbxError::ValueTooLong { len: bytes.len(), max: MAX_UNSIGNED_SHORT });
+        return Err(AbxError::ValueTooLong {
+            len: bytes.len(),
+            max: MAX_UNSIGNED_SHORT,
+        });
     }
     out.write_all(&(bytes.len() as u16).to_be_bytes())?;
     out.write_all(bytes)?;
@@ -95,7 +101,10 @@ fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
 /// `attributeBytesBase64` length checks.
 fn write_bytes_blob(out: &mut impl Write, bytes: &[u8]) -> Result<()> {
     if bytes.len() > MAX_UNSIGNED_SHORT {
-        return Err(AbxError::ValueTooLong { len: bytes.len(), max: MAX_UNSIGNED_SHORT });
+        return Err(AbxError::ValueTooLong {
+            len: bytes.len(),
+            max: MAX_UNSIGNED_SHORT,
+        });
     }
     out.write_all(&(bytes.len() as u16).to_be_bytes())?;
     out.write_all(bytes)?;
@@ -115,7 +124,10 @@ impl<W: Write> AbxWriter<W> {
     /// Create a writer, writing the 4-byte magic header immediately.
     pub fn new(mut writer: W) -> Result<Self> {
         writer.write_all(&MAGIC)?;
-        Ok(AbxWriter { writer, pool: InternedPool::new() })
+        Ok(AbxWriter {
+            writer,
+            pool: InternedPool::new(),
+        })
     }
 
     /// Encode and write a single [`Event`].
@@ -124,20 +136,24 @@ impl<W: Write> AbxWriter<W> {
             Event::StartDocument => self.writer.write_all(&[CMD_START_DOCUMENT | TYPE_NULL])?,
             Event::EndDocument => self.writer.write_all(&[CMD_END_DOCUMENT | TYPE_NULL])?,
             Event::StartTag { name, attributes } => {
-                self.writer.write_all(&[TYPE_STRING_INTERNED | CMD_START_TAG])?;
+                self.writer
+                    .write_all(&[TYPE_STRING_INTERNED | CMD_START_TAG])?;
                 self.pool.write(&mut self.writer, name)?;
                 for attr in attributes {
                     self.write_attribute(attr)?;
                 }
             }
             Event::EndTag { name } => {
-                self.writer.write_all(&[TYPE_STRING_INTERNED | CMD_END_TAG])?;
+                self.writer
+                    .write_all(&[TYPE_STRING_INTERNED | CMD_END_TAG])?;
                 self.pool.write(&mut self.writer, name)?;
             }
             Event::Text(s) => self.write_text_token(CMD_TEXT, s)?,
             Event::CdataSection(s) => self.write_text_token(CMD_CDSECT, s)?,
             Event::Comment(s) => self.write_text_token(CMD_COMMENT, s)?,
-            Event::ProcessingInstruction(s) => self.write_text_token(CMD_PROCESSING_INSTRUCTION, s)?,
+            Event::ProcessingInstruction(s) => {
+                self.write_text_token(CMD_PROCESSING_INSTRUCTION, s)?
+            }
             Event::EntityReference(s) => self.write_text_token(CMD_ENTITY_REF, s)?,
             Event::IgnorableWhitespace(s) => self.write_text_token(CMD_IGNORABLE_WHITESPACE, s)?,
             Event::DocDecl(s) => self.write_text_token(CMD_DOCDECL, s)?,

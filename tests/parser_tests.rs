@@ -30,7 +30,10 @@ fn test_empty_document() {
     data.push(CMD_END_DOCUMENT);
 
     let mut p = AbxParser::new(&data).unwrap();
-    assert!(matches!(p.next_event().unwrap(), Some(Event::StartDocument)));
+    assert!(matches!(
+        p.next_event().unwrap(),
+        Some(Event::StartDocument)
+    ));
     assert!(matches!(p.next_event().unwrap(), Some(Event::EndDocument)));
     assert!(p.next_event().unwrap().is_none());
 }
@@ -109,7 +112,10 @@ fn test_interned_string_attribute() {
     let ev = p.next_event().unwrap().unwrap();
 
     if let Event::StartTag { attributes, .. } = ev {
-        assert_eq!(attributes[0].value, AttributeValue::String("value_str".into()));
+        assert_eq!(
+            attributes[0].value,
+            AttributeValue::String("value_str".into())
+        );
     } else {
         panic!();
     }
@@ -206,7 +212,10 @@ fn test_long_hex_attribute_negative_renders_like_real_aosp() {
     let ev = p.next_event().unwrap().unwrap();
 
     if let Event::StartTag { attributes, .. } = ev {
-        assert_eq!(attributes[0].value, AttributeValue::LongHex(0xDEADBEEFCAFEBABE));
+        assert_eq!(
+            attributes[0].value,
+            AttributeValue::LongHex(0xDEADBEEFCAFEBABE)
+        );
         assert_eq!(attributes[0].value.as_str(), "-2152411035014542");
     } else {
         panic!();
@@ -324,7 +333,10 @@ fn test_bytes_hex_attribute() {
     let ev = p.next_event().unwrap().unwrap();
 
     if let Event::StartTag { attributes, .. } = ev {
-        assert_eq!(attributes[0].value, AttributeValue::BytesHex(bytes.to_vec()));
+        assert_eq!(
+            attributes[0].value,
+            AttributeValue::BytesHex(bytes.to_vec())
+        );
         assert_eq!(attributes[0].value.as_str(), "deadbeef");
     } else {
         panic!();
@@ -470,8 +482,8 @@ fn test_xml_entity_escaping() {
 // We reuse the same hand-built ABX blobs but feed them through
 // `AbxStreamParser<Cursor<Vec<u8>>>` to exercise the Read-based path.
 
-use std::io::{Cursor, Read};
 use abx::AbxStreamParser;
+use std::io::{Cursor, Read};
 
 fn stream(data: Vec<u8>) -> AbxStreamParser<Cursor<Vec<u8>>> {
     AbxStreamParser::new(Cursor::new(data)).expect("stream parser construction failed")
@@ -494,7 +506,9 @@ fn stream_simple_element_no_attrs() {
 
     let events = stream(with_magic(&body)).collect_events().unwrap();
     // StartDocument, StartTag[name=root], EndTag[name=root], EndDocument
-    assert!(matches!(&events[1], Event::StartTag { name, attributes } if name == "root" && attributes.is_empty()));
+    assert!(
+        matches!(&events[1], Event::StartTag { name, attributes } if name == "root" && attributes.is_empty())
+    );
     assert!(matches!(&events[2], Event::EndTag { name } if name == "root"));
 }
 
@@ -514,7 +528,10 @@ fn stream_string_attribute() {
 
     if let Event::StartTag { name, attributes } = ev {
         assert_eq!(name, "pkg");
-        assert_eq!(attributes[0].value, AttributeValue::String("com.example".into()));
+        assert_eq!(
+            attributes[0].value,
+            AttributeValue::String("com.example".into())
+        );
     } else {
         panic!("expected StartTag");
     }
@@ -592,7 +609,10 @@ fn stream_bytes_hex_and_base64() {
     if let Event::StartTag { attributes, .. } = ev {
         assert_eq!(attributes[0].value, AttributeValue::BytesHex(raw.to_vec()));
         assert_eq!(attributes[0].value.as_str(), "abcd");
-        assert_eq!(attributes[1].value, AttributeValue::BytesBase64(raw.to_vec()));
+        assert_eq!(
+            attributes[1].value,
+            AttributeValue::BytesBase64(raw.to_vec())
+        );
     } else {
         panic!();
     }
@@ -604,13 +624,20 @@ fn stream_interned_string_reuse() {
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("tag")); // pool[0]
     body.push(TYPE_STRING | CMD_START_TAG);
-    body.extend(interned_ref(0));     // reuse "tag"
+    body.extend(interned_ref(0)); // reuse "tag"
     body.push(CMD_END_DOCUMENT);
 
     let events = stream(with_magic(&body)).collect_events().unwrap();
-    let names: Vec<&str> = events.iter().filter_map(|e| {
-        if let Event::StartTag { name, .. } = e { Some(name.as_str()) } else { None }
-    }).collect();
+    let names: Vec<&str> = events
+        .iter()
+        .filter_map(|e| {
+            if let Event::StartTag { name, .. } = e {
+                Some(name.as_str())
+            } else {
+                None
+            }
+        })
+        .collect();
     assert_eq!(names, ["tag", "tag"]);
 }
 
@@ -681,8 +708,16 @@ fn stream_iterator() {
         .collect::<abx::Result<Vec<_>>>()
         .unwrap();
 
-    assert!(events.iter().any(|e| matches!(e, Event::StartTag { name, .. } if name == "a")));
-    assert!(events.iter().any(|e| matches!(e, Event::StartTag { name, .. } if name == "b")));
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::StartTag { name, .. } if name == "a"))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, Event::StartTag { name, .. } if name == "b"))
+    );
 }
 
 #[test]
@@ -714,7 +749,9 @@ fn stream_tiny_read_chunks() {
     struct OneByteReader<'a>(&'a [u8]);
     impl<'a> Read for OneByteReader<'a> {
         fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-            if self.0.is_empty() || buf.is_empty() { return Ok(0); }
+            if self.0.is_empty() || buf.is_empty() {
+                return Ok(0);
+            }
             buf[0] = self.0[0];
             self.0 = &self.0[1..];
             Ok(1)

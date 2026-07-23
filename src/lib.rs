@@ -63,28 +63,26 @@ pub use error::{AbxError, Result};
 mod wire;
 pub use wire::MAGIC;
 pub(crate) use wire::{
-    INTERNED_NEW,
-    CMD_ATTRIBUTE, CMD_CDSECT, CMD_COMMENT, CMD_DOCDECL, CMD_END_DOCUMENT,
-    CMD_END_TAG, CMD_ENTITY_REF, CMD_IGNORABLE_WHITESPACE,
-    CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT, CMD_START_TAG, CMD_TEXT,
-    TYPE_BOOLEAN_FALSE, TYPE_BOOLEAN_TRUE, TYPE_BYTES_BASE64, TYPE_BYTES_HEX,
-    TYPE_DOUBLE, TYPE_FLOAT, TYPE_INT, TYPE_INT_HEX, TYPE_LONG, TYPE_LONG_HEX,
-    TYPE_NULL, TYPE_STRING, TYPE_STRING_INTERNED,
+    CMD_ATTRIBUTE, CMD_CDSECT, CMD_COMMENT, CMD_DOCDECL, CMD_END_DOCUMENT, CMD_END_TAG,
+    CMD_ENTITY_REF, CMD_IGNORABLE_WHITESPACE, CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT,
+    CMD_START_TAG, CMD_TEXT, INTERNED_NEW, TYPE_BOOLEAN_FALSE, TYPE_BOOLEAN_TRUE,
+    TYPE_BYTES_BASE64, TYPE_BYTES_HEX, TYPE_DOUBLE, TYPE_FLOAT, TYPE_INT, TYPE_INT_HEX, TYPE_LONG,
+    TYPE_LONG_HEX, TYPE_NULL, TYPE_STRING, TYPE_STRING_INTERNED,
 };
 
 mod event;
-pub use event::{Attribute, AttributeValue, Event, InternedStr};
 pub(crate) use event::render_event;
+pub use event::{Attribute, AttributeValue, Event, InternedStr};
 
 mod decode;
-pub use decode::{AbxParser, AbxParserOwned};
 pub use decode::stream;
 pub use decode::stream::AbxStreamParser;
+pub use decode::{AbxParser, AbxParserOwned};
 
 mod encode;
-pub use encode::{events_to_abx, AbxWriter};
 #[cfg(feature = "xml")]
 pub use encode::xml_to_abx;
+pub use encode::{AbxWriter, events_to_abx};
 
 #[cfg(feature = "serialize")]
 mod de;

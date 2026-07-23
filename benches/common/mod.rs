@@ -38,8 +38,14 @@ pub fn synthetic_events(n: usize) -> Vec<Event> {
                     name: "name".into(),
                     value: AttributeValue::String(format!("com.example.app{i}")),
                 },
-                Attribute { name: "version".into(), value: AttributeValue::Int(i as i32) },
-                Attribute { name: "enabled".into(), value: AttributeValue::Boolean(i % 2 == 0) },
+                Attribute {
+                    name: "version".into(),
+                    value: AttributeValue::Int(i as i32),
+                },
+                Attribute {
+                    name: "enabled".into(),
+                    value: AttributeValue::Boolean(i % 2 == 0),
+                },
             ],
         });
         events.push(Event::EndTag { name: "pkg".into() });

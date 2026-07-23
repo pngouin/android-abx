@@ -12,7 +12,10 @@ fn xml_to_abx_encodes_self_closing_tag() {
         events,
         vec![
             Event::StartDocument,
-            Event::StartTag { name: "a".into(), attributes: vec![] },
+            Event::StartTag {
+                name: "a".into(),
+                attributes: vec![]
+            },
             Event::EndTag { name: "a".into() },
             Event::EndDocument,
         ]
@@ -25,7 +28,8 @@ fn attr<'a>(attributes: &'a [Attribute], name: &str) -> &'a AttributeValue {
 
 #[test]
 fn xml_to_abx_encodes_cdata_comment_pi_doctype() {
-    let xml = "<!DOCTYPE root><root><!--a comment--><![CDATA[raw <not-a-tag>]]><?pi target data?></root>";
+    let xml =
+        "<!DOCTYPE root><root><!--a comment--><![CDATA[raw <not-a-tag>]]><?pi target data?></root>";
     let bytes = abx::xml_to_abx(xml).unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
     assert_eq!(
@@ -33,11 +37,16 @@ fn xml_to_abx_encodes_cdata_comment_pi_doctype() {
         vec![
             Event::StartDocument,
             Event::DocDecl("root".into()),
-            Event::StartTag { name: "root".into(), attributes: vec![] },
+            Event::StartTag {
+                name: "root".into(),
+                attributes: vec![]
+            },
             Event::Comment("a comment".into()),
             Event::CdataSection("raw <not-a-tag>".into()),
             Event::ProcessingInstruction("pi target data".into()),
-            Event::EndTag { name: "root".into() },
+            Event::EndTag {
+                name: "root".into()
+            },
             Event::EndDocument,
         ]
     );
@@ -59,7 +68,12 @@ fn xml_to_abx_passes_namespace_prefixed_names_through_opaquely() {
         }
         other => panic!("expected StartTag, got {other:?}"),
     }
-    assert_eq!(events[2], Event::EndTag { name: "ns:root".into() });
+    assert_eq!(
+        events[2],
+        Event::EndTag {
+            name: "ns:root".into()
+        }
+    );
 }
 
 #[test]
@@ -73,15 +87,26 @@ fn xml_to_abx_preserves_whitespace_only_text_literally() {
         events,
         vec![
             Event::StartDocument,
-            Event::StartTag { name: "root".into(), attributes: vec![] },
+            Event::StartTag {
+                name: "root".into(),
+                attributes: vec![]
+            },
             Event::Text("\n  ".into()),
-            Event::StartTag { name: "a".into(), attributes: vec![] },
+            Event::StartTag {
+                name: "a".into(),
+                attributes: vec![]
+            },
             Event::EndTag { name: "a".into() },
             Event::Text("\n  ".into()),
-            Event::StartTag { name: "b".into(), attributes: vec![] },
+            Event::StartTag {
+                name: "b".into(),
+                attributes: vec![]
+            },
             Event::EndTag { name: "b".into() },
             Event::Text("\n".into()),
-            Event::EndTag { name: "root".into() },
+            Event::EndTag {
+                name: "root".into()
+            },
             Event::EndDocument,
         ]
     );
@@ -102,7 +127,10 @@ fn s(v: &str) -> AttributeValue {
 fn simple_pkg_fixture_round_trips() {
     let xml = include_str!("fixtures/simple_pkg.xml");
     let bytes = abx::xml_to_abx(xml).unwrap();
-    let attrs = AbxParser::new(&bytes).unwrap().attributes_of("pkg").unwrap();
+    let attrs = AbxParser::new(&bytes)
+        .unwrap()
+        .attributes_of("pkg")
+        .unwrap();
     assert_eq!(*attr(&attrs, "name"), s("com.example.chat"));
     assert_eq!(*attr(&attrs, "version"), s("3"));
     assert_eq!(*attr(&attrs, "flags"), s("1"));
@@ -115,7 +143,9 @@ fn nested_permissions_fixture_round_trips() {
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
 
     let pkg_name = events.iter().find_map(|e| match e {
-        Event::StartTag { name, attributes } if name == "pkg" => attr(attributes, "name").as_string(),
+        Event::StartTag { name, attributes } if name == "pkg" => {
+            attr(attributes, "name").as_string()
+        }
         _ => None,
     });
     assert_eq!(pkg_name, Some("com.example.chat"));
@@ -135,7 +165,10 @@ fn nested_permissions_fixture_round_trips() {
         .iter()
         .position(|e| matches!(e, Event::StartTag { name, .. } if name == "description"))
         .unwrap();
-    assert_eq!(events[description_start + 1], Event::Text("A chat app".into()));
+    assert_eq!(
+        events[description_start + 1],
+        Event::Text("A chat app".into())
+    );
 }
 
 #[test]
@@ -144,7 +177,10 @@ fn booleans_fixture_stays_string_typed() {
     // every attribute value stays a plain String.
     let xml = include_str!("fixtures/booleans.xml");
     let bytes = abx::xml_to_abx(xml).unwrap();
-    let attrs = AbxParser::new(&bytes).unwrap().attributes_of("settings").unwrap();
+    let attrs = AbxParser::new(&bytes)
+        .unwrap()
+        .attributes_of("settings")
+        .unwrap();
     assert_eq!(*attr(&attrs, "enabled"), s("true"));
     assert_eq!(*attr(&attrs, "hidden"), s("false"));
     assert_eq!(*attr(&attrs, "count"), s("12345"));
@@ -195,7 +231,9 @@ fn special_chars_fixture_decodes_entities_consistently() {
 
     // Round-tripping back to XML re-escapes the decoded characters, so the
     // rendered attribute text matches the original source exactly.
-    let full_xml = abx::xml_to_abx(xml).and_then(|b| abx::abx_to_xml(&b)).unwrap();
+    let full_xml = abx::xml_to_abx(xml)
+        .and_then(|b| abx::abx_to_xml(&b))
+        .unwrap();
     assert!(full_xml.contains(r#"title="Tom &amp; Jerry &lt;3&gt;""#));
     assert!(full_xml.contains(r#">Use &quot;quotes&quot; &amp; &apos;apostrophes&apos; safely<"#));
 }

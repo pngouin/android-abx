@@ -96,9 +96,18 @@ fn simple_pkg_fixture() {
             Event::StartTag {
                 name: "pkg".into(),
                 attributes: vec![
-                    Attribute { name: "name".into(), value: AttributeValue::String("com.example.chat".into()) },
-                    Attribute { name: "version".into(), value: AttributeValue::Int(3) },
-                    Attribute { name: "flags".into(), value: AttributeValue::Int(1) },
+                    Attribute {
+                        name: "name".into(),
+                        value: AttributeValue::String("com.example.chat".into())
+                    },
+                    Attribute {
+                        name: "version".into(),
+                        value: AttributeValue::Int(3)
+                    },
+                    Attribute {
+                        name: "flags".into(),
+                        value: AttributeValue::Int(1)
+                    },
                 ],
             },
             Event::EndTag { name: "pkg".into() },
@@ -121,7 +130,10 @@ fn simple_pkg_fixture() {
     start.extend(common::attr_string("name", "com.example.chat"));
     start.extend(common::attr_int("version", 3));
     start.extend(common::attr_int("flags", 1));
-    let expected = common::document(&[start, backref(common::TYPE_STRING_INTERNED, common::CMD_END_TAG, 0)]);
+    let expected = common::document(&[
+        start,
+        backref(common::TYPE_STRING_INTERNED, common::CMD_END_TAG, 0),
+    ]);
     assert_eq!(data, &expected[..]);
 }
 
@@ -141,7 +153,9 @@ fn nested_permissions_fixture() {
     let permission_names: Vec<&str> = evs
         .iter()
         .filter_map(|e| match e {
-            Event::StartTag { name, attributes } if name == "permission" => attr(attributes, "name").as_string(),
+            Event::StartTag { name, attributes } if name == "permission" => {
+                attr(attributes, "name").as_string()
+            }
             _ => None,
         })
         .collect();
@@ -210,8 +224,10 @@ fn booleans_fixture_typed_attributes() {
     start.extend(common::attr_bool("hidden", false));
     start.extend(common::attr_int("count", 12345));
     start.extend(common::attr_double("ratio", 3.14));
-    let expected =
-        common::document(&[start, backref(common::TYPE_STRING_INTERNED, common::CMD_END_TAG, 0)]);
+    let expected = common::document(&[
+        start,
+        backref(common::TYPE_STRING_INTERNED, common::CMD_END_TAG, 0),
+    ]);
     assert_eq!(data, &expected[..]);
 }
 
@@ -223,7 +239,9 @@ fn special_chars_fixture() {
     let title = evs
         .iter()
         .find_map(|e| match e {
-            Event::StartTag { name, attributes } if name == "note" => attr(attributes, "title").as_string(),
+            Event::StartTag { name, attributes } if name == "note" => {
+                attr(attributes, "title").as_string()
+            }
             _ => None,
         })
         .unwrap();
@@ -311,7 +329,11 @@ fn repeated_strings_fixture_interning() {
     // Hammer=6, Wrench=7, Screwdriver=8, parts=9, Bolt=10, Nut=11,
     // Washer=12, Pliers=13.
     let item = |id: i32, id_new: bool, cat_new: Option<&str>, name_new: &str| {
-        let mut v = if id == 1 { common::start_tag("item") } else { backref(common::TYPE_STRING_INTERNED, common::CMD_START_TAG, 1) };
+        let mut v = if id == 1 {
+            common::start_tag("item")
+        } else {
+            backref(common::TYPE_STRING_INTERNED, common::CMD_START_TAG, 1)
+        };
         v.extend(if id_new {
             common::attr_int("id", id)
         } else {
@@ -320,14 +342,24 @@ fn repeated_strings_fixture_interning() {
             a
         });
         v.extend(match cat_new {
-            Some(cat) => attr_interned_raw(common::interned_new("category"), common::interned_new(cat)),
+            Some(cat) => {
+                attr_interned_raw(common::interned_new("category"), common::interned_new(cat))
+            }
             None => attr_interned_raw(common::interned_ref(3), common::interned_ref(4)), // "tools"
         });
         v.extend(attr_interned_raw(
-            if id == 1 { common::interned_new("name") } else { common::interned_ref(5) },
+            if id == 1 {
+                common::interned_new("name")
+            } else {
+                common::interned_ref(5)
+            },
             common::interned_new(name_new),
         ));
-        v.extend(backref(common::TYPE_STRING_INTERNED, common::CMD_END_TAG, 1));
+        v.extend(backref(
+            common::TYPE_STRING_INTERNED,
+            common::CMD_END_TAG,
+            1,
+        ));
         v
     };
 
@@ -341,8 +373,15 @@ fn repeated_strings_fixture_interning() {
         } else {
             attr_interned_raw(common::interned_ref(3), common::interned_ref(9)) // "parts"
         });
-        v.extend(attr_interned_raw(common::interned_ref(5), common::interned_new(name_new)));
-        v.extend(backref(common::TYPE_STRING_INTERNED, common::CMD_END_TAG, 1));
+        v.extend(attr_interned_raw(
+            common::interned_ref(5),
+            common::interned_new(name_new),
+        ));
+        v.extend(backref(
+            common::TYPE_STRING_INTERNED,
+            common::CMD_END_TAG,
+            1,
+        ));
         v
     };
 
@@ -374,7 +413,10 @@ fn aosp_verify_fixture() {
             Event::StartTag {
                 name: "root".into(),
                 attributes: vec![
-                    Attribute { name: "str".into(), value: AttributeValue::String("hello".into()) },
+                    Attribute {
+                        name: "str".into(),
+                        value: AttributeValue::String("hello".into())
+                    },
                     Attribute {
                         name: "bh".into(),
                         value: AttributeValue::BytesHex(vec![0xDE, 0xAD, 0xBE, 0xEF]),
@@ -383,17 +425,38 @@ fn aosp_verify_fixture() {
                         name: "bb".into(),
                         value: AttributeValue::BytesBase64(vec![1, 2, 3]),
                     },
-                    Attribute { name: "i".into(), value: AttributeValue::Int(-42) },
-                    Attribute { name: "ih".into(), value: AttributeValue::IntHex(0xCAFEBABE) },
-                    Attribute { name: "l".into(), value: AttributeValue::Long(-123456789012) },
+                    Attribute {
+                        name: "i".into(),
+                        value: AttributeValue::Int(-42)
+                    },
+                    Attribute {
+                        name: "ih".into(),
+                        value: AttributeValue::IntHex(0xCAFEBABE)
+                    },
+                    Attribute {
+                        name: "l".into(),
+                        value: AttributeValue::Long(-123456789012)
+                    },
                     Attribute {
                         name: "lh".into(),
                         value: AttributeValue::LongHex(0xDEADBEEFCAFEBABE),
                     },
-                    Attribute { name: "f".into(), value: AttributeValue::Float(3.5) },
-                    Attribute { name: "d".into(), value: AttributeValue::Double(2.71828) },
-                    Attribute { name: "bt".into(), value: AttributeValue::Boolean(true) },
-                    Attribute { name: "bf".into(), value: AttributeValue::Boolean(false) },
+                    Attribute {
+                        name: "f".into(),
+                        value: AttributeValue::Float(3.5)
+                    },
+                    Attribute {
+                        name: "d".into(),
+                        value: AttributeValue::Double(2.71828)
+                    },
+                    Attribute {
+                        name: "bt".into(),
+                        value: AttributeValue::Boolean(true)
+                    },
+                    Attribute {
+                        name: "bf".into(),
+                        value: AttributeValue::Boolean(false)
+                    },
                 ],
             },
             Event::Text("hello world".into()),
@@ -404,9 +467,16 @@ fn aosp_verify_fixture() {
             Event::DocDecl("some-decl".into()),
             Event::IgnorableWhitespace("   ".into()),
             Event::Text("".into()),
-            Event::StartTag { name: "root".into(), attributes: vec![] },
-            Event::EndTag { name: "root".into() },
-            Event::EndTag { name: "root".into() },
+            Event::StartTag {
+                name: "root".into(),
+                attributes: vec![]
+            },
+            Event::EndTag {
+                name: "root".into()
+            },
+            Event::EndTag {
+                name: "root".into()
+            },
             Event::EndDocument,
         ]
     );

@@ -30,17 +30,35 @@ fn deserialize_flat_struct_from_attributes() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let pkg: Pkg = p.deserialize_next("pkg").unwrap().expect("element found");
-    assert_eq!(pkg, Pkg { name: "com.example".into(), version: 3 });
+    assert_eq!(
+        pkg,
+        Pkg {
+            name: "com.example".into(),
+            version: 3
+        }
+    );
 }
 
 #[test]
 fn from_element_direct_no_parser() {
     let attrs = vec![
-        Attribute { name: "name".into(), value: AttributeValue::String("x".into()) },
-        Attribute { name: "version".into(), value: AttributeValue::Int(9) },
+        Attribute {
+            name: "name".into(),
+            value: AttributeValue::String("x".into()),
+        },
+        Attribute {
+            name: "version".into(),
+            value: AttributeValue::Int(9),
+        },
     ];
     let pkg: Pkg = abx::from_element(&attrs, None).unwrap();
-    assert_eq!(pkg, Pkg { name: "x".into(), version: 9 });
+    assert_eq!(
+        pkg,
+        Pkg {
+            name: "x".into(),
+            version: 9
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -83,7 +101,13 @@ fn deserialize_optional_missing_attribute() {
     let mut p = AbxParser::new(&data).unwrap();
     let a: Flagged = p.deserialize_next("e").unwrap().unwrap();
     let b: Flagged = p.deserialize_next("e").unwrap().unwrap();
-    assert_eq!(a, Flagged { id: 1, flag: Some(true) });
+    assert_eq!(
+        a,
+        Flagged {
+            id: 1,
+            flag: Some(true)
+        }
+    );
     assert_eq!(b, Flagged { id: 2, flag: None });
 }
 
@@ -153,7 +177,13 @@ fn deserialize_text_content() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let n: Note = p.deserialize_next("note").unwrap().unwrap();
-    assert_eq!(n, Note { id: 7, body: "hello world".into() });
+    assert_eq!(
+        n,
+        Note {
+            id: 7,
+            body: "hello world".into()
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -200,7 +230,13 @@ fn deserialize_bytes_field() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let b: Blob = p.deserialize_next("blob").unwrap().unwrap();
-    assert_eq!(b, Blob { hex: vec![0xDE, 0xAD, 0xBE, 0xEF], b64: vec![1, 2, 3, 4, 5] });
+    assert_eq!(
+        b,
+        Blob {
+            hex: vec![0xDE, 0xAD, 0xBE, 0xEF],
+            b64: vec![1, 2, 3, 4, 5]
+        }
+    );
 }
 
 #[test]
@@ -222,7 +258,13 @@ fn deserialize_unknown_attributes_ignored_by_default() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let pkg: Pkg = p.deserialize_next("pkg").unwrap().unwrap();
-    assert_eq!(pkg, Pkg { name: "x".into(), version: 1 });
+    assert_eq!(
+        pkg,
+        Pkg {
+            name: "x".into(),
+            version: 1
+        }
+    );
 }
 
 #[derive(Debug, Deserialize)]
@@ -242,7 +284,10 @@ fn deserialize_deny_unknown_fields_errors() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let result: abx::Result<Option<Strict>> = p.deserialize_next("pkg");
-    assert!(result.is_err(), "expected deny_unknown_fields to reject 'extra'");
+    assert!(
+        result.is_err(),
+        "expected deny_unknown_fields to reject 'extra'"
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
@@ -286,8 +331,20 @@ fn deserialize_iter_lazy_streaming() {
         .unwrap();
 
     assert_eq!(items.len(), 5);
-    assert_eq!(items[0], Item { id: 0, name: "name-0".into() });
-    assert_eq!(items[4], Item { id: 4, name: "name-4".into() });
+    assert_eq!(
+        items[0],
+        Item {
+            id: 0,
+            name: "name-0".into()
+        }
+    );
+    assert_eq!(
+        items[4],
+        Item {
+            id: 4,
+            name: "name-4".into()
+        }
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -311,10 +368,19 @@ struct Entry {
 
 #[test]
 fn deserialize_enum_field_from_string_attribute() {
-    let data = document(&[start_tag("e"), attr_string("status", "active"), end_tag("e")]);
+    let data = document(&[
+        start_tag("e"),
+        attr_string("status", "active"),
+        end_tag("e"),
+    ]);
     let mut p = AbxParser::new(&data).unwrap();
     let e: Entry = p.deserialize_next("e").unwrap().unwrap();
-    assert_eq!(e, Entry { status: Status::Active });
+    assert_eq!(
+        e,
+        Entry {
+            status: Status::Active
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -328,7 +394,12 @@ fn deserialize_enum_field_from_text_content() {
     let data = document(&[start_tag("note"), text("inactive"), end_tag("note")]);
     let mut p = AbxParser::new(&data).unwrap();
     let n: Mood = p.deserialize_next("note").unwrap().unwrap();
-    assert_eq!(n, Mood { value: Status::Inactive });
+    assert_eq!(
+        n,
+        Mood {
+            value: Status::Inactive
+        }
+    );
 }
 
 #[test]
@@ -373,7 +444,12 @@ fn deserialize_empty_string_attribute_is_some_empty_not_none() {
     let data = document(&[start_tag("e"), attr_string("label", ""), end_tag("e")]);
     let mut p = AbxParser::new(&data).unwrap();
     let e: Named = p.deserialize_next("e").unwrap().unwrap();
-    assert_eq!(e, Named { label: Some(String::new()) });
+    assert_eq!(
+        e,
+        Named {
+            label: Some(String::new())
+        }
+    );
 
     let data2 = document(&[start_tag("e"), end_tag("e")]);
     let mut p2 = AbxParser::new(&data2).unwrap();
@@ -414,7 +490,13 @@ fn deserialize_single_nested_child_struct() {
     let pkg: PkgWithMeta = p.deserialize_next("pkg").unwrap().unwrap();
     assert_eq!(
         pkg,
-        PkgWithMeta { name: "com.example".into(), meta: Meta { key: "a".into(), value: "b".into() } }
+        PkgWithMeta {
+            name: "com.example".into(),
+            meta: Meta {
+                key: "a".into(),
+                value: "b".into()
+            }
+        }
     );
 }
 
@@ -449,8 +531,12 @@ fn deserialize_repeated_children_as_vec() {
         PkgWithPerms {
             name: "com.example".into(),
             permission: vec![
-                Permission { name: "INTERNET".into() },
-                Permission { name: "CAMERA".into() },
+                Permission {
+                    name: "INTERNET".into()
+                },
+                Permission {
+                    name: "CAMERA".into()
+                },
             ],
         }
     );
@@ -477,7 +563,13 @@ fn deserialize_leaf_child_as_scalar_string() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let pkg: WithDescription = p.deserialize_next("pkg").unwrap().unwrap();
-    assert_eq!(pkg, WithDescription { id: 1, description: "A nice app".into() });
+    assert_eq!(
+        pkg,
+        WithDescription {
+            id: 1,
+            description: "A nice app".into()
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -489,7 +581,13 @@ struct WithCount {
 
 #[test]
 fn deserialize_leaf_child_as_scalar_number() {
-    let data = document(&[start_tag("e"), start_tag("count"), text("42"), end_tag("count"), end_tag("e")]);
+    let data = document(&[
+        start_tag("e"),
+        start_tag("count"),
+        text("42"),
+        end_tag("count"),
+        end_tag("e"),
+    ]);
     let mut p = AbxParser::new(&data).unwrap();
     let e: WithCount = p.deserialize_next("e").unwrap().unwrap();
     assert_eq!(e, WithCount { count: 42 });
@@ -559,7 +657,16 @@ fn deserialize_deeply_nested_children() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let root: Root = p.deserialize_next("root").unwrap().unwrap();
-    assert_eq!(root, Root { child: Child { grandchild: Grandchild { label: "deep".into() } } });
+    assert_eq!(
+        root,
+        Root {
+            child: Child {
+                grandchild: Grandchild {
+                    label: "deep".into()
+                }
+            }
+        }
+    );
 }
 
 #[derive(Debug, Deserialize)]
@@ -580,7 +687,10 @@ fn deserialize_deny_unknown_fields_rejects_unknown_child() {
     ]);
     let mut p = AbxParser::new(&data).unwrap();
     let result: abx::Result<Option<StrictNoChildren>> = p.deserialize_next("pkg");
-    assert!(result.is_err(), "deny_unknown_fields should reject an unmapped child element too");
+    assert!(
+        result.is_err(),
+        "deny_unknown_fields should reject an unmapped child element too"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -600,7 +710,13 @@ fn from_slice_deserializes_root_element_regardless_of_tag_name() {
         end_tag("anything"),
     ]);
     let pkg: Pkg = abx::from_slice(&data).unwrap();
-    assert_eq!(pkg, Pkg { name: "com.example".into(), version: 3 });
+    assert_eq!(
+        pkg,
+        Pkg {
+            name: "com.example".into(),
+            version: 3
+        }
+    );
 }
 
 #[test]
@@ -612,7 +728,13 @@ fn from_reader_deserializes_root_element_streaming() {
         end_tag("pkg"),
     ]);
     let pkg: Pkg = abx::from_reader(Cursor::new(data)).unwrap();
-    assert_eq!(pkg, Pkg { name: "com.example".into(), version: 3 });
+    assert_eq!(
+        pkg,
+        Pkg {
+            name: "com.example".into(),
+            version: 3
+        }
+    );
 }
 
 #[test]
@@ -632,7 +754,10 @@ fn from_slice_and_from_reader_agree() {
 fn from_slice_errors_when_document_has_no_root_element() {
     let data = document(&[]); // StartDocument + EndDocument only
     let result: abx::Result<Pkg> = abx::from_slice(&data);
-    assert!(result.is_err(), "a document with no elements at all should not silently succeed");
+    assert!(
+        result.is_err(),
+        "a document with no elements at all should not silently succeed"
+    );
 }
 
 #[test]
@@ -668,8 +793,12 @@ fn from_slice_supports_nested_children_like_deserialize_next() {
         PkgWithPerms {
             name: "com.example".into(),
             permission: vec![
-                Permission { name: "INTERNET".into() },
-                Permission { name: "CAMERA".into() },
+                Permission {
+                    name: "INTERNET".into()
+                },
+                Permission {
+                    name: "CAMERA".into()
+                },
             ],
         }
     );

@@ -163,7 +163,11 @@ pub fn attr_double(name: &str, value: f64) -> Vec<u8> {
 }
 
 pub fn attr_bool(name: &str, value: bool) -> Vec<u8> {
-    let ty = if value { TYPE_BOOLEAN_TRUE } else { TYPE_BOOLEAN_FALSE };
+    let ty = if value {
+        TYPE_BOOLEAN_TRUE
+    } else {
+        TYPE_BOOLEAN_FALSE
+    };
     let mut out = vec![ty | CMD_ATTRIBUTE];
     out.extend(interned_new(name));
     out

@@ -26,7 +26,14 @@ fn simple_pkg_fixture_deserializes_typed_ints() {
     let data = include_bytes!("fixtures/simple_pkg.abx");
     let mut p = AbxParser::new(data).unwrap();
     let pkg: SimplePkg = p.deserialize_next("pkg").unwrap().unwrap();
-    assert_eq!(pkg, SimplePkg { name: "com.example.chat".into(), version: 3, flags: 1 });
+    assert_eq!(
+        pkg,
+        SimplePkg {
+            name: "com.example.chat".into(),
+            version: 3,
+            flags: 1
+        }
+    );
 }
 
 #[test]
@@ -35,14 +42,28 @@ fn simple_pkg_fixture_via_from_slice_matches_deserialize_next() {
     // the "pkg" tag name spelled out -- same real fixture, same result.
     let data = include_bytes!("fixtures/simple_pkg.abx");
     let pkg: SimplePkg = abx::from_slice(data).unwrap();
-    assert_eq!(pkg, SimplePkg { name: "com.example.chat".into(), version: 3, flags: 1 });
+    assert_eq!(
+        pkg,
+        SimplePkg {
+            name: "com.example.chat".into(),
+            version: 3,
+            flags: 1
+        }
+    );
 }
 
 #[test]
 fn simple_pkg_fixture_via_from_file() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx");
     let pkg: SimplePkg = abx::from_file(path).unwrap();
-    assert_eq!(pkg, SimplePkg { name: "com.example.chat".into(), version: 3, flags: 1 });
+    assert_eq!(
+        pkg,
+        SimplePkg {
+            name: "com.example.chat".into(),
+            version: 3,
+            flags: 1
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -70,8 +91,12 @@ fn nested_permissions_fixture_deserializes_with_children() {
             name: "com.example.chat".into(),
             description: "A chat app".into(),
             permission: vec![
-                Permission { name: "INTERNET".into() },
-                Permission { name: "CAMERA".into() },
+                Permission {
+                    name: "INTERNET".into()
+                },
+                Permission {
+                    name: "CAMERA".into()
+                },
             ],
         }
     );
@@ -102,7 +127,15 @@ fn booleans_fixture_deserializes_typed_attributes() {
     let data = include_bytes!("fixtures/booleans.abx");
     let mut p = AbxParser::new(data).unwrap();
     let settings: Settings = p.deserialize_next("settings").unwrap().unwrap();
-    assert_eq!(settings, Settings { enabled: true, hidden: false, count: 12345, ratio: 3.14 });
+    assert_eq!(
+        settings,
+        Settings {
+            enabled: true,
+            hidden: false,
+            count: 12345,
+            ratio: 3.14
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
@@ -114,13 +147,41 @@ struct Item {
 
 fn expected_items() -> Vec<Item> {
     vec![
-        Item { id: 1, category: "tools".into(), name: "Hammer".into() },
-        Item { id: 2, category: "tools".into(), name: "Wrench".into() },
-        Item { id: 3, category: "tools".into(), name: "Screwdriver".into() },
-        Item { id: 4, category: "parts".into(), name: "Bolt".into() },
-        Item { id: 5, category: "parts".into(), name: "Nut".into() },
-        Item { id: 6, category: "parts".into(), name: "Washer".into() },
-        Item { id: 7, category: "tools".into(), name: "Pliers".into() },
+        Item {
+            id: 1,
+            category: "tools".into(),
+            name: "Hammer".into(),
+        },
+        Item {
+            id: 2,
+            category: "tools".into(),
+            name: "Wrench".into(),
+        },
+        Item {
+            id: 3,
+            category: "tools".into(),
+            name: "Screwdriver".into(),
+        },
+        Item {
+            id: 4,
+            category: "parts".into(),
+            name: "Bolt".into(),
+        },
+        Item {
+            id: 5,
+            category: "parts".into(),
+            name: "Nut".into(),
+        },
+        Item {
+            id: 6,
+            category: "parts".into(),
+            name: "Washer".into(),
+        },
+        Item {
+            id: 7,
+            category: "tools".into(),
+            name: "Pliers".into(),
+        },
     ]
 }
 
@@ -136,8 +197,10 @@ fn repeated_strings_fixture_deserialize_all() {
 fn repeated_strings_fixture_deserialize_iter_streaming_matches_slice() {
     let data = include_bytes!("fixtures/repeated_strings.abx");
     let mut stream_p = AbxStreamParser::new(Cursor::new(data.to_vec())).unwrap();
-    let streamed: Vec<Item> =
-        stream_p.deserialize_iter::<Item>("item").collect::<abx::Result<Vec<Item>>>().unwrap();
+    let streamed: Vec<Item> = stream_p
+        .deserialize_iter::<Item>("item")
+        .collect::<abx::Result<Vec<Item>>>()
+        .unwrap();
     assert_eq!(streamed, expected_items());
 }
 
