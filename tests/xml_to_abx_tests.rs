@@ -123,6 +123,7 @@ fn simple_pkg_fixture_round_trips() {
     let attrs = AbxParser::new(&bytes)
         .unwrap()
         .attributes_of("pkg")
+        .unwrap()
         .unwrap();
     assert_eq!(*attr(&attrs, "name"), s("com.example.chat"));
     assert_eq!(*attr(&attrs, "version"), s("3"));
@@ -173,6 +174,7 @@ fn booleans_fixture_stays_string_typed() {
     let attrs = AbxParser::new(&bytes)
         .unwrap()
         .attributes_of("settings")
+        .unwrap()
         .unwrap();
     assert_eq!(*attr(&attrs, "enabled"), s("true"));
     assert_eq!(*attr(&attrs, "hidden"), s("false"));
@@ -219,7 +221,7 @@ fn special_chars_fixture_decodes_entities_consistently() {
     let xml = include_str!("fixtures/special_chars.xml");
     let bytes = abx::xml_to_abx(xml).unwrap();
     let mut p = AbxParser::new(&bytes).unwrap();
-    let attrs = p.attributes_of("note").unwrap();
+    let attrs = p.attributes_of("note").unwrap().unwrap();
     assert_eq!(*attr(&attrs, "title"), s("Tom & Jerry <3>"));
 
     // Round-tripping back to XML re-escapes the decoded characters, so the

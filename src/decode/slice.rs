@@ -248,16 +248,20 @@ impl<'a> AbxParser<'a> {
     }
 
     /// Return the value of the first matching `attr_name` inside any
-    /// `<element_name>` in the remaining stream.
-    pub fn find_attribute(&mut self, element: &str, attr: &str) -> Option<AttributeValue> {
+    /// `<element_name>` in the remaining stream. `Ok(None)` means the
+    /// element/attribute wasn't found before the document ended; `Err`
+    /// means a parse failure interrupted the search. Callers that don't
+    /// care about that distinction can collapse both into `None` with
+    /// `.ok().flatten()`.
+    pub fn find_attribute(&mut self, element: &str, attr: &str) -> Result<Option<AttributeValue>> {
         loop {
-            match self.next_event().ok()? {
+            match self.next_event()? {
                 Some(Event::StartTag { name, attributes }) if name == element => {
                     if let Some(a) = attributes.into_iter().find(|a| a.name == attr) {
-                        return Some(a.value);
+                        return Ok(Some(a.value));
                     }
                 }
-                Some(Event::EndDocument) | None => return None,
+                Some(Event::EndDocument) | None => return Ok(None),
                 _ => {}
             }
         }
@@ -285,14 +289,18 @@ impl<'a> AbxParser<'a> {
         Ok(out)
     }
 
-    /// Attributes of the first `<element_name>` tag.
-    pub fn attributes_of(&mut self, element: &str) -> Option<Vec<Attribute>> {
+    /// Attributes of the first `<element_name>` tag. `Ok(None)` means no
+    /// matching tag was found before the document ended; `Err` means a
+    /// parse failure interrupted the search — see
+    /// [`find_attribute`](Self::find_attribute) for how to collapse both
+    /// into a plain `None`.
+    pub fn attributes_of(&mut self, element: &str) -> Result<Option<Vec<Attribute>>> {
         loop {
-            match self.next_event().ok()? {
+            match self.next_event()? {
                 Some(Event::StartTag { name, attributes }) if name == element => {
-                    return Some(attributes);
+                    return Ok(Some(attributes));
                 }
-                Some(Event::EndDocument) | None => return None,
+                Some(Event::EndDocument) | None => return Ok(None),
                 _ => {}
             }
         }

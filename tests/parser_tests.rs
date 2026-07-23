@@ -451,6 +451,7 @@ fn test_find_attribute() {
     let val = AbxParser::new(&data)
         .unwrap()
         .find_attribute("component", "package")
+        .unwrap()
         .unwrap();
     assert_eq!(val.as_str(), "com.foo.bar");
 }
@@ -687,6 +688,7 @@ fn stream_find_attribute() {
 
     let val = stream(with_magic(&body))
         .find_attribute("component", "package")
+        .unwrap()
         .unwrap();
     assert_eq!(val.as_str(), "com.stream.test");
 }
