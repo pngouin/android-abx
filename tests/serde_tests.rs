@@ -2,6 +2,10 @@
 //! Integration tests for `serde` deserialization of ABX elements into
 //! structs, exercised through both `AbxParser` and `AbxStreamParser`.
 
+// Fixture value 2.718281828 is an intentionally imprecise literal, not an
+// attempt at std::f64::consts::E.
+#![allow(clippy::approx_constant)]
+
 use std::io::Cursor;
 
 use abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue};

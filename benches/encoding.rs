@@ -3,7 +3,7 @@
 //!
 //! Run with: `cargo bench --bench encoding`
 
-use abx::events_to_abx;
+use abx::{events_to_abx, AbxParser};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 
 mod common;
@@ -25,5 +25,25 @@ fn bench_events_to_abx(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_events_to_abx);
+/// Encodes the event stream decoded from the real AOSP-generated
+/// `aosp_verify.abx` fixture, instead of only synthetic data. The
+/// `assert_eq!` below is a cheap, one-time correctness guard, not part of
+/// the timed loop — it would have caught the `write_utf`/`write_bytes_blob`
+/// length-prefix truncation bug this bench was added alongside.
+fn bench_encode_real_fixture(c: &mut Criterion) {
+    let data = include_bytes!("../tests/fixtures/aosp_verify.abx");
+    let events = AbxParser::new(data).unwrap().collect_events().unwrap();
+    assert_eq!(events_to_abx(&events).unwrap(), data);
+
+    let mut group = c.benchmark_group("encode_real_fixture");
+    group.throughput(Throughput::Bytes(data.len() as u64));
+
+    group.bench_function(BenchmarkId::new("AbxWriter", "aosp_verify"), |b| {
+        b.iter(|| black_box(events_to_abx(black_box(&events)).unwrap()));
+    });
+
+    group.finish();
+}
+
+criterion_group!(benches, bench_events_to_abx, bench_encode_real_fixture);
 criterion_main!(benches);

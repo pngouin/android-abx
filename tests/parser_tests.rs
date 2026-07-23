@@ -1,7 +1,11 @@
-/// Integration tests for the abx crate.
-///
-/// We build synthetic ABX blobs by hand (matching the AOSP wire format)
-/// so the tests are self-contained with no binary fixtures required.
+//! Integration tests for the abx crate.
+//!
+//! We build synthetic ABX blobs by hand (matching the AOSP wire format)
+//! so the tests are self-contained with no binary fixtures required.
+
+// Fixture values 3.14/2.718_281_828 are intentionally imprecise literals,
+// not attempts at std::f32::consts::PI/std::f64::consts::E.
+#![allow(clippy::approx_constant)]
 
 use abx::{AbxParser, AttributeValue, Event};
 
@@ -28,7 +32,7 @@ fn test_empty_document() {
     let mut p = AbxParser::new(&data).unwrap();
     assert!(matches!(p.next_event().unwrap(), Some(Event::StartDocument)));
     assert!(matches!(p.next_event().unwrap(), Some(Event::EndDocument)));
-    assert!(matches!(p.next_event().unwrap(), None));
+    assert!(p.next_event().unwrap().is_none());
 }
 
 #[test]

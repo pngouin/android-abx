@@ -2,6 +2,10 @@
 //! asserting exact wire bytes against `tests/common/mod.rs`'s builders
 //! (used here as the expected-bytes oracle, not as parser input).
 
+// Fixture value 2.71828 is an intentionally imprecise literal, not an
+// attempt at std::f64::consts::E.
+#![allow(clippy::approx_constant)]
+
 use abx::{AbxWriter, Attribute, AttributeValue, Event};
 
 mod common;
@@ -254,6 +258,68 @@ fn events_to_abx_round_trips_through_decoder() {
     let bytes = abx::events_to_abx(&events).unwrap();
     let decoded = abx::AbxParser::new(&bytes).unwrap().collect_events().unwrap();
     assert_eq!(decoded, events);
+}
+
+/// Matches AOSP's `FastDataOutput.writeUTF()`, which accepts a string right
+/// up to `MAX_UNSIGNED_SHORT` (65,535) encoded bytes.
+#[test]
+fn writer_encodes_string_at_max_length_boundary() {
+    let s = "a".repeat(65_535);
+    let mut w = AbxWriter::new(Vec::new()).unwrap();
+    w.write_event(&Event::StartDocument).unwrap();
+    w.write_event(&Event::Text(s.clone())).unwrap();
+    w.write_event(&Event::EndDocument).unwrap();
+
+    let bytes = w.into_inner();
+    let evs = abx::AbxParser::new(&bytes).unwrap().collect_events().unwrap();
+    assert_eq!(evs[1], Event::Text(s));
+}
+
+/// Matches AOSP's `FastDataOutput.writeUTF()`, which throws
+/// `UTFDataFormatException` once the encoded length exceeds
+/// `MAX_UNSIGNED_SHORT` (65,535) — this crate rejects instead of silently
+/// truncating the `u16` wire length prefix (which would corrupt everything
+/// written after).
+#[test]
+fn writer_errors_on_oversized_text() {
+    let s = "a".repeat(65_536);
+    let mut w = AbxWriter::new(Vec::new()).unwrap();
+    w.write_event(&Event::StartDocument).unwrap();
+    let err = w.write_event(&Event::Text(s)).unwrap_err();
+    assert!(matches!(err, abx::AbxError::ValueTooLong { len: 65_536, max: 65_535 }));
+}
+
+/// Same boundary as `writer_errors_on_oversized_text`, via an attribute's
+/// `String` value rather than a text-bearing event.
+#[test]
+fn writer_errors_on_oversized_attr_string() {
+    let s = "a".repeat(65_536);
+    let mut w = AbxWriter::new(Vec::new()).unwrap();
+    w.write_event(&Event::StartDocument).unwrap();
+    let err = w
+        .write_event(&Event::StartTag {
+            name: "tag".into(),
+            attributes: vec![Attribute { name: "a".into(), value: AttributeValue::String(s) }],
+        })
+        .unwrap_err();
+    assert!(matches!(err, abx::AbxError::ValueTooLong { len: 65_536, max: 65_535 }));
+}
+
+/// Matches AOSP's `BinaryXmlSerializer.attributeBytesHex`/
+/// `attributeBytesBase64`, which explicitly check `value.length >
+/// MAX_UNSIGNED_SHORT` and throw before writing anything.
+#[test]
+fn writer_errors_on_oversized_bytes_blob() {
+    let b = vec![0u8; 65_536];
+    let mut w = AbxWriter::new(Vec::new()).unwrap();
+    w.write_event(&Event::StartDocument).unwrap();
+    let err = w
+        .write_event(&Event::StartTag {
+            name: "tag".into(),
+            attributes: vec![Attribute { name: "a".into(), value: AttributeValue::BytesHex(b) }],
+        })
+        .unwrap_err();
+    assert!(matches!(err, abx::AbxError::ValueTooLong { len: 65_536, max: 65_535 }));
 }
 
 #[test]

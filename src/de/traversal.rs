@@ -93,14 +93,16 @@ where
 pub(crate) struct ElementData {
     pub(crate) attributes: Vec<Attribute>,
     pub(crate) text: Option<String>,
-    pub(crate) children: Vec<(InternedStr, ElementData)>,
+    pub(crate) children: ChildList,
 }
+
+pub(crate) type ChildList = Vec<(InternedStr, ElementData)>;
 
 /// Consume events up to (and including) the end tag that closes the element
 /// whose start tag was just read: direct-child `Text` content is
 /// accumulated, and each nested `StartTag` is recursively collected in full
 /// (its own attributes, text, and children) rather than being skipped.
-fn read_element_body<S: EventSource>(source: &mut S) -> Result<(Option<String>, Vec<(InternedStr, ElementData)>)> {
+fn read_element_body<S: EventSource>(source: &mut S) -> Result<(Option<String>, ChildList)> {
     let mut text = String::new();
     let mut has_text = false;
     let mut children = Vec::new();
@@ -110,6 +112,10 @@ fn read_element_body<S: EventSource>(source: &mut S) -> Result<(Option<String>, 
                 let (child_text, child_children) = read_element_body(source)?;
                 children.push((name, ElementData { attributes, text: child_text, children: child_children }));
             }
+            // Doesn't check the end tag's name against the element being
+            // closed: real AOSP's own BinaryXmlPullParser.nextToken() reads
+            // an END_TAG's name into mCurrentName with no stack or
+            // validation either, so this is parity, not a gap.
             Some(Event::EndTag { .. }) => break,
             Some(Event::Text(t)) => {
                 has_text = true;

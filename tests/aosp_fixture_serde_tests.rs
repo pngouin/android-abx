@@ -5,6 +5,10 @@
 //! nested-child mapping — against real data rather than only the hand-built
 //! blobs in `tests/serde_tests.rs`.
 
+// Fixture value 3.14 is an intentionally imprecise literal, not an
+// attempt at std::f64::consts::PI.
+#![allow(clippy::approx_constant)]
+
 use std::io::Cursor;
 
 use abx::{AbxParser, AbxStreamParser};

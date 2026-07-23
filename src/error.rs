@@ -18,6 +18,8 @@ pub enum AbxError {
     UnknownAttributeType(u8),
     #[error("unknown command 0x{0:02X}")]
     UnknownCommand(u8),
+    #[error("value too long: {len} bytes exceeds maximum of {max}")]
+    ValueTooLong { len: usize, max: usize },
     #[error("nom parse error: {0}")]
     Nom(String),
     #[error("I/O error: {0}")]

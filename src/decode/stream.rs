@@ -380,10 +380,10 @@ impl<R: Read> AbxStreamParser<R> {
     pub fn find_all_attributes(&mut self, element: &str, attr: &str) -> Result<Vec<AttributeValue>> {
         let mut out = Vec::new();
         while let Some(ev) = self.next_event()? {
-            if let Event::StartTag { name, attributes } = ev {
-                if name == element {
-                    out.extend(attributes.into_iter().filter(|a| a.name == attr).map(|a| a.value));
-                }
+            if let Event::StartTag { name, attributes } = ev
+                && name == element
+            {
+                out.extend(attributes.into_iter().filter(|a| a.name == attr).map(|a| a.value));
             }
         }
         Ok(out)
@@ -406,8 +406,10 @@ impl<R: Read> AbxStreamParser<R> {
     pub fn all_attributes_of(&mut self, element: &str) -> Result<Vec<Vec<Attribute>>> {
         let mut out = Vec::new();
         while let Some(ev) = self.next_event()? {
-            if let Event::StartTag { name, attributes } = ev {
-                if name == element { out.push(attributes); }
+            if let Event::StartTag { name, attributes } = ev
+                && name == element
+            {
+                out.push(attributes);
             }
         }
         Ok(out)

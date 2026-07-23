@@ -29,6 +29,11 @@
 //! known up front (authored in `Harness.java`), unlike a black-box
 //! independent tool's output.
 
+// Fixture values like 3.14/2.71828 are intentionally imprecise literals,
+// not attempts at std::f64::consts::PI/E — the exact byte/string
+// representation of the literal itself is what's under test.
+#![allow(clippy::approx_constant)]
+
 use abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue, Event};
 use std::io::Cursor;
 

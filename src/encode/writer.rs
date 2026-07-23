@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::{Attribute, AttributeValue, Event, InternedStr, Result, MAGIC};
+use crate::{AbxError, Attribute, AttributeValue, Event, InternedStr, Result, MAGIC};
 use crate::{
     CMD_ATTRIBUTE, CMD_CDSECT, CMD_COMMENT, CMD_DOCDECL, CMD_END_DOCUMENT, CMD_END_TAG,
     CMD_ENTITY_REF, CMD_IGNORABLE_WHITESPACE, CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT,
@@ -27,6 +27,12 @@ use crate::{
 /// O(n²) in the number of unique names though, so past the limit this
 /// switches to a `HashMap`.
 const LINEAR_SCAN_LIMIT: usize = 32;
+
+/// Largest length a `u16` wire length-prefix can express. Matches AOSP's
+/// `FastDataOutput.MAX_UNSIGNED_SHORT` — `writeUTF()` throws past this, and
+/// `BinaryXmlSerializer.attributeBytesHex`/`attributeBytesBase64` check it
+/// explicitly before writing anything.
+const MAX_UNSIGNED_SHORT: usize = 65_535;
 
 struct InternedPool {
     names: Vec<InternedStr>,
@@ -70,14 +76,27 @@ impl InternedPool {
     }
 }
 
+/// Errors (rather than truncating the `u16` length prefix, which would
+/// silently corrupt the stream for anything written after) when `bytes` is
+/// longer than a `u16` length can express — same boundary and same
+/// reject-don't-truncate behavior as AOSP's `writeUTF()`.
 fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
     let bytes = s.as_bytes();
+    if bytes.len() > MAX_UNSIGNED_SHORT {
+        return Err(AbxError::ValueTooLong { len: bytes.len(), max: MAX_UNSIGNED_SHORT });
+    }
     out.write_all(&(bytes.len() as u16).to_be_bytes())?;
     out.write_all(bytes)?;
     Ok(())
 }
 
+/// See [`write_utf`] — same overflow check, for raw byte blobs
+/// (`BytesHex`/`BytesBase64`), matching AOSP's `attributeBytesHex`/
+/// `attributeBytesBase64` length checks.
 fn write_bytes_blob(out: &mut impl Write, bytes: &[u8]) -> Result<()> {
+    if bytes.len() > MAX_UNSIGNED_SHORT {
+        return Err(AbxError::ValueTooLong { len: bytes.len(), max: MAX_UNSIGNED_SHORT });
+    }
     out.write_all(&(bytes.len() as u16).to_be_bytes())?;
     out.write_all(bytes)?;
     Ok(())
@@ -127,7 +146,7 @@ impl<W: Write> AbxWriter<W> {
     }
 
     /// Shared shape for the seven text-bearing events: always `TYPE_STRING`
-    /// + length-prefixed UTF-8, even for an empty string. Never
+    /// plus length-prefixed UTF-8, even for an empty string. Never
     /// `TYPE_NULL` — real AOSP's own parser can't correctly read that form
     /// back (a confirmed bug: it calls `readUTF()` unconditionally here,
     /// unlike the `ATTRIBUTE` branch), so `TYPE_STRING` with an empty

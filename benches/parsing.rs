@@ -38,6 +38,31 @@ fn bench_parse_events(c: &mut Criterion) {
     group.finish();
 }
 
+/// Same shape as `bench_parse_events`, but on the real AOSP-generated
+/// `aosp_verify.abx` fixture (see `tests/aosp_fixture_tests.rs::aosp_verify_fixture`,
+/// which verifies this file byte-for-byte) instead of only synthetic data.
+fn bench_parse_real_fixture(c: &mut Criterion) {
+    let data = include_bytes!("../tests/fixtures/aosp_verify.abx");
+    let mut group = c.benchmark_group("parse_real_fixture");
+    group.throughput(Throughput::Bytes(data.len() as u64));
+
+    group.bench_function(BenchmarkId::new("AbxParser", "aosp_verify"), |b| {
+        b.iter(|| {
+            let mut p = AbxParser::new(black_box(data)).unwrap();
+            black_box(p.collect_events().unwrap())
+        });
+    });
+
+    group.bench_function(BenchmarkId::new("AbxStreamParser", "aosp_verify"), |b| {
+        b.iter(|| {
+            let mut p = AbxStreamParser::new(Cursor::new(black_box(data.to_vec()))).unwrap();
+            black_box(p.collect_events().unwrap())
+        });
+    });
+
+    group.finish();
+}
+
 fn bench_to_xml(c: &mut Criterion) {
     let mut group = c.benchmark_group("to_xml");
     for &n in &SIZES {
@@ -58,5 +83,5 @@ fn bench_to_xml(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_parse_events, bench_to_xml);
+criterion_group!(benches, bench_parse_events, bench_parse_real_fixture, bench_to_xml);
 criterion_main!(benches);
