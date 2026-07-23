@@ -3,7 +3,8 @@
 //!
 //! Run with: `cargo bench --bench xml_encoding --features xml`
 
-use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use std::hint::black_box;
 
 mod common;
 use common::synthetic_xml;

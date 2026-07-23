@@ -8,7 +8,8 @@
 use std::io::Cursor;
 
 use abx::{AbxParser, AbxStreamParser};
-use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use std::hint::black_box;
 
 mod common;
 use common::synthetic_document;
