@@ -312,6 +312,21 @@ Two optimization passes came out of these benchmarks:
   `quick-xml`). The lower-level `AbxWriter`/`events_to_abx` need no extra
   dependency and are always available.
 
+## Development
+
+Formatting/lints and commit messages are checked via
+[pre-commit](https://pre-commit.com/) (config in `.pre-commit-config.yaml`):
+`cargo fmt`, `cargo clippy --all-targets --all-features -- -D warnings`, and
+a [Conventional Commits](https://www.conventionalcommits.org/) check on the
+commit message. `.git/hooks/` isn't tracked by git, so after cloning:
+
+```bash
+pip install pre-commit
+pre-commit install --hook-type pre-commit --hook-type commit-msg
+```
+
+`pre-commit run --all-files` runs everything on demand without committing.
+
 ## About this project
 
 This crate has also served as a real-world test case for agentic AI coding
