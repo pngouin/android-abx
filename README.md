@@ -1,5 +1,9 @@
 # Android-ABX
 
+[![CI](https://github.com/pngouin/android-abx/actions/workflows/ci.yml/badge.svg)](https://github.com/pngouin/android-abx/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/android-abx.svg)](https://crates.io/crates/android-abx)
+[![docs.rs](https://docs.rs/android-abx/badge.svg)](https://docs.rs/android-abx)
+
 A Rust parser and encoder for Android Binary XML (ABX) — the binary format
 used by Android's `BinaryXmlSerializer`/`BinaryXmlPullParser` for on-device
 system config files (`packages.xml`, `settings_*.xml`, `users/*.xml`, and
