@@ -10,7 +10,7 @@ homepage = "https://github.com/pngouin/android-abx"
 documentation = "https://docs.rs/android-abx"
 keywords = ["android", "xml", "binary", "parser", "serialization"]
 categories = ["parser-implementations", "encoding"]
-exclude = ["tests/fixtures/aosp_verify/"]
+exclude = ["tests/fixtures/aosp_verify/", "cliff.toml"]
 
 [lib]
 name = "abx"
