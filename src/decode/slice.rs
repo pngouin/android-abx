@@ -25,10 +25,6 @@ use crate::{
 use crate::INTERNED_NEW;
 use crate::InternedStr;
 
-// ---------------------------------------------------------------------------
-// Low-level nom parsers (stateless, operate on &[u8])
-// ---------------------------------------------------------------------------
-
 fn parse_utf_string(input: &[u8]) -> IResult<&[u8], String> {
     let (input, len) = be_u16(input)?;
     let (input, bytes) = take(len).parse(input)?;
@@ -45,10 +41,6 @@ fn parse_bytes_blob(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
     let (input, bytes) = take(len).parse(input)?;
     Ok((input, bytes.to_vec()))
 }
-
-// ---------------------------------------------------------------------------
-// Slice-based parser  (AbxParser)
-// ---------------------------------------------------------------------------
 
 /// Zero-allocation pull parser that works on an in-memory `&[u8]`.
 ///
@@ -371,10 +363,6 @@ impl<'a> AbxParser<'a> {
         Ok(map)
     }
 }
-
-// ---------------------------------------------------------------------------
-// Owned wrapper
-// ---------------------------------------------------------------------------
 
 /// Heap-owning wrapper. Stores the raw bytes and hands out [`AbxParser`]
 /// borrows without lifetime gymnastics on the call-site.

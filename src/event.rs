@@ -16,10 +16,6 @@ fn format_signed_hex(v: i64) -> String {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Typed attribute value
-// ---------------------------------------------------------------------------
-
 /// The typed payload of an XML attribute.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AttributeValue {
@@ -165,10 +161,6 @@ impl AttributeValue {
     }
 }
 
-// ---------------------------------------------------------------------------
-// InternedStr — a cheaply-clonable string for tag/attribute names
-// ---------------------------------------------------------------------------
-
 /// A tag or attribute name read from the wire format's interned-string
 /// pool. The same handful of names (`pkg`, `name`, `version`, ...) repeat
 /// across every element in a typical document, so back-reference clones
@@ -179,10 +171,6 @@ impl AttributeValue {
 /// reference-counted `Arc<str>` (clone is a refcount bump) — either way, no
 /// allocation on clone.
 pub type InternedStr = smol_str::SmolStr;
-
-// ---------------------------------------------------------------------------
-// Attribute
-// ---------------------------------------------------------------------------
 
 /// One XML attribute: a name plus its typed value.
 #[derive(Debug, Clone, PartialEq)]
@@ -200,10 +188,6 @@ impl Attribute {
         self.value.as_str()
     }
 }
-
-// ---------------------------------------------------------------------------
-// XML Event  (shared by both parsers)
-// ---------------------------------------------------------------------------
 
 /// One `XmlPullParser`-style parse event, as read from (or written to) an
 /// ABX stream.
@@ -242,10 +226,6 @@ pub enum Event {
     /// A `<!DOCTYPE ...>` declaration's raw content.
     DocDecl(String),
 }
-
-// ---------------------------------------------------------------------------
-// Shared XML rendering helper
-// ---------------------------------------------------------------------------
 
 pub(crate) fn xml_escape(s: &str) -> std::borrow::Cow<'_, str> {
     if s.bytes()

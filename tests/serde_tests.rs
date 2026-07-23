@@ -347,13 +347,6 @@ fn deserialize_iter_lazy_streaming() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Comparison against quick-xml's serde conventions (docs.rs/quick-xml/de):
-// unit-variant enums selected by matching the string value against the
-// variant name (quick-xml: "Variant names become element or attribute
-// names"), and the Some("") vs None distinction for optional attributes.
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 enum Status {
@@ -456,12 +449,6 @@ fn deserialize_empty_string_attribute_is_some_empty_not_none() {
     let e2: Named = p2.deserialize_next("e").unwrap().unwrap();
     assert_eq!(e2, Named { label: None });
 }
-
-// ---------------------------------------------------------------------------
-// Nested child elements as struct fields (quick-xml-style element mapping,
-// without the @attr prefix — see src/de/mod.rs module docs for the
-// precedence rule used instead: attribute wins over a same-named child).
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct Meta {
@@ -692,14 +679,6 @@ fn deserialize_deny_unknown_fields_rejects_unknown_child() {
         "deny_unknown_fields should reject an unmapped child element too"
     );
 }
-
-// ---------------------------------------------------------------------------
-// Top-level from_slice/from_reader/from_file: one-shot "whole document is
-// one struct" deserialization, matching quick-xml's from_str/from_reader
-// and serde_json's from_slice/from_reader — no manual parser construction,
-// and (like both of those) the root element's tag name is not checked
-// against the Rust type at all.
-// ---------------------------------------------------------------------------
 
 #[test]
 fn from_slice_deserializes_root_element_regardless_of_tag_name() {

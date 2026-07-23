@@ -89,10 +89,6 @@ mod de;
 #[cfg(feature = "serialize")]
 pub use de::{from_element, from_file, from_reader, from_slice};
 
-// ---------------------------------------------------------------------------
-// Convenience top-level functions
-// ---------------------------------------------------------------------------
-
 /// Convert ABX bytes to an XML string.
 pub fn abx_to_xml(data: &[u8]) -> Result<String> {
     AbxParser::new(data)?.to_xml()

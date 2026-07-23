@@ -116,13 +116,6 @@ fn s(v: &str) -> AttributeValue {
     AttributeValue::String(v.to_string())
 }
 
-// ---------------------------------------------------------------------------
-// Round-trips against the real fixtures in tests/fixtures/. Not compared
-// byte-for-byte against the real .abx files there: xml2abx infers booleans
-// and sometimes interns values, xml_to_abx deliberately does not — these
-// check that our own encode-then-decode round trip preserves the content.
-// ---------------------------------------------------------------------------
-
 #[test]
 fn simple_pkg_fixture_round_trips() {
     let xml = include_str!("fixtures/simple_pkg.xml");

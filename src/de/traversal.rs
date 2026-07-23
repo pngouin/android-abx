@@ -10,11 +10,6 @@ use crate::{AbxError, AbxParser, AbxStreamParser, Attribute, Event, InternedStr,
 
 use super::element::ElementDeserializer;
 
-// ---------------------------------------------------------------------------
-// EventSource — unifies AbxParser and AbxStreamParser so the traversal
-// below is written once, not once per parser type.
-// ---------------------------------------------------------------------------
-
 pub(crate) trait EventSource {
     fn next_event(&mut self) -> Result<Option<Event>>;
 }

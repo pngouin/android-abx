@@ -76,10 +76,6 @@ pub const TYPE_DOUBLE: u8 = 0xB0;
 pub const TYPE_BOOLEAN_TRUE: u8 = 0xC0;
 pub const TYPE_BOOLEAN_FALSE: u8 = 0xD0;
 
-// ---------------------------------------------------------------------------
-// Higher-level element/attribute/document builders
-// ---------------------------------------------------------------------------
-
 pub fn start_tag(name: &str) -> Vec<u8> {
     let mut out = vec![TYPE_STRING_INTERNED | CMD_START_TAG];
     out.extend(interned_new(name));

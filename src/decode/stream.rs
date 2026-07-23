@@ -39,18 +39,10 @@ use crate::{
 use crate::INTERNED_NEW;
 use std::collections::HashMap;
 
-// ---------------------------------------------------------------------------
-// Buffer constants
-// ---------------------------------------------------------------------------
-
 /// Initial ring-buffer capacity (4 KiB).
 const INITIAL_BUF: usize = 4096;
 /// How many bytes to try to read per refill.
 const READ_CHUNK: usize = 4096;
-
-// ---------------------------------------------------------------------------
-// AbxStreamParser
-// ---------------------------------------------------------------------------
 
 /// Pull parser that reads from any `R: Read` source.
 ///
@@ -556,10 +548,6 @@ impl<R: Read> AbxStreamParser<R> {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Iterator impl  — lets you use `for ev in parser { … }`
-// ---------------------------------------------------------------------------
-
 impl<R: Read> Iterator for AbxStreamParser<R> {
     type Item = Result<Event>;
 
@@ -571,10 +559,6 @@ impl<R: Read> Iterator for AbxStreamParser<R> {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// DeserializeIter — lazy struct-per-element streaming, from deserialize_iter
-// ---------------------------------------------------------------------------
 
 /// Lazily yields each remaining `<element>`, deserialized into `T`. See
 /// [`AbxStreamParser::deserialize_iter`].

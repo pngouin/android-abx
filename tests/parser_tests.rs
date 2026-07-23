@@ -12,10 +12,6 @@ use abx::{AbxParser, AttributeValue, Event};
 mod common;
 use common::*;
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[test]
 fn test_invalid_magic() {
     let data = b"\x00\x00\x00\x00rest";

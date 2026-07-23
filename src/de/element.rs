@@ -34,10 +34,6 @@ macro_rules! scalar_from_leaf_text {
     };
 }
 
-// ---------------------------------------------------------------------------
-// ElementDeserializer — attributes + child elements (+ optional $text).
-// ---------------------------------------------------------------------------
-
 #[derive(Clone, Copy)]
 pub(crate) struct ElementDeserializer<'de> {
     pub(crate) attributes: &'de [Attribute],
