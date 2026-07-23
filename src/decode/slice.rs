@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use nom::{
-    IResult,
+    IResult, Parser,
     bytes::complete::take,
     number::complete::{be_f32, be_f64, be_i32, be_i64, be_u8, be_u16},
 };
@@ -31,7 +31,7 @@ use crate::InternedStr;
 
 fn parse_utf_string(input: &[u8]) -> IResult<&[u8], String> {
     let (input, len) = be_u16(input)?;
-    let (input, bytes) = take(len)(input)?;
+    let (input, bytes) = take(len).parse(input)?;
     let s = std::str::from_utf8(bytes)
         .map_err(|_| {
             nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Verify))
@@ -42,7 +42,7 @@ fn parse_utf_string(input: &[u8]) -> IResult<&[u8], String> {
 
 fn parse_bytes_blob(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
     let (input, len) = be_u16(input)?;
-    let (input, bytes) = take(len)(input)?;
+    let (input, bytes) = take(len).parse(input)?;
     Ok((input, bytes.to_vec()))
 }
 

@@ -19,7 +19,7 @@ name = "abx"
 all-features = true
 
 [dependencies]
-nom = "7"
+nom = "8"
 base64 = "0.23"
 faster-hex = "0.10"
 thiserror = "2"
