@@ -1,4 +1,4 @@
-# abx
+# Android-ABX
 
 A Rust parser and encoder for Android Binary XML (ABX) — the binary format
 used by Android's `BinaryXmlSerializer`/`BinaryXmlPullParser` for on-device
