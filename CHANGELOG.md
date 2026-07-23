@@ -4,6 +4,35 @@ All notable changes to this project are documented in this file, generated
 automatically from [Conventional Commits](https://www.conventionalcommits.org/)
 history by [git-cliff](https://git-cliff.org/).
 
+## [0.2.0] - 2026-07-23
+
+### Bug Fixes
+
+- Return Result<Option<T>> from find_attribute/attributes_of
+
+
+### Refactor
+
+- *(encode)* Dedupe write_utf into write_bytes_blob
+
+
+### Documentation
+
+- *(changelog)* Update CHANGELOG.md for v0.1.1
+
+
+### Testing
+
+- Drop redundant test_ prefix in parser_tests.rs
+
+
+### Miscellaneous Tasks
+
+- Add [lints] table to Cargo.toml
+
+- *(release)* Bump version to 0.2.0
+
+
 ## [0.1.1] - 2026-07-23
 
 ### Features
