@@ -13,14 +13,14 @@ mod common;
 use common::*;
 
 #[test]
-fn test_invalid_magic() {
+fn invalid_magic() {
     let data = b"\x00\x00\x00\x00rest";
     let err = AbxParser::new(data).unwrap_err();
     assert!(matches!(err, abx::AbxError::InvalidMagic { .. }));
 }
 
 #[test]
-fn test_empty_document() {
+fn empty_document() {
     let mut data = with_magic(&[]);
     data.push(CMD_START_DOCUMENT);
     data.push(CMD_END_DOCUMENT);
@@ -35,7 +35,7 @@ fn test_empty_document() {
 }
 
 #[test]
-fn test_simple_element_no_attrs() {
+fn simple_element_no_attrs() {
     // <root/>
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -62,7 +62,7 @@ fn test_simple_element_no_attrs() {
 }
 
 #[test]
-fn test_string_attribute() {
+fn string_attribute() {
     // <pkg name="com.example"/>
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -92,7 +92,7 @@ fn test_string_attribute() {
 }
 
 #[test]
-fn test_interned_string_attribute() {
+fn interned_string_attribute() {
     // Attribute value stored as an interned string.
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -118,7 +118,7 @@ fn test_interned_string_attribute() {
 }
 
 #[test]
-fn test_int_attribute() {
+fn int_attribute() {
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("e"));
@@ -141,7 +141,7 @@ fn test_int_attribute() {
 }
 
 #[test]
-fn test_int_hex_attribute() {
+fn int_hex_attribute() {
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("e"));
@@ -164,7 +164,7 @@ fn test_int_hex_attribute() {
 }
 
 #[test]
-fn test_int_hex_attribute_negative_renders_like_real_aosp() {
+fn int_hex_attribute_negative_renders_like_real_aosp() {
     // Real AOSP renders TYPE_INT_HEX via Integer.toString(v, 16), which
     // treats v as signed: negative -> "-" + hex(magnitude), e.g.
     // 0xCAFEBABE is "-35014542", not "cafebabe".
@@ -190,8 +190,8 @@ fn test_int_hex_attribute_negative_renders_like_real_aosp() {
 }
 
 #[test]
-fn test_long_hex_attribute_negative_renders_like_real_aosp() {
-    // Same as test_int_hex_attribute_negative_renders_like_real_aosp, for
+fn long_hex_attribute_negative_renders_like_real_aosp() {
+    // Same as int_hex_attribute_negative_renders_like_real_aosp, for
     // TYPE_LONG_HEX / Long.toString(v, 16). Confirmed against real AOSP:
     // Long.toString(0xDEADBEEFCAFEBABEL, 16) is "-2152411035014542".
     let mut body = vec![CMD_START_DOCUMENT];
@@ -219,7 +219,7 @@ fn test_long_hex_attribute_negative_renders_like_real_aosp() {
 }
 
 #[test]
-fn test_long_attribute() {
+fn long_attribute() {
     let v: i64 = 9_876_543_210;
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -242,7 +242,7 @@ fn test_long_attribute() {
 }
 
 #[test]
-fn test_float_attribute() {
+fn float_attribute() {
     let v: f32 = 3.14;
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -265,7 +265,7 @@ fn test_float_attribute() {
 }
 
 #[test]
-fn test_double_attribute() {
+fn double_attribute() {
     let v: f64 = 2.718_281_828;
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -288,7 +288,7 @@ fn test_double_attribute() {
 }
 
 #[test]
-fn test_boolean_attributes() {
+fn boolean_attributes() {
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("e"));
@@ -312,7 +312,7 @@ fn test_boolean_attributes() {
 }
 
 #[test]
-fn test_bytes_hex_attribute() {
+fn bytes_hex_attribute() {
     let bytes: &[u8] = &[0xDE, 0xAD, 0xBE, 0xEF];
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -340,7 +340,7 @@ fn test_bytes_hex_attribute() {
 }
 
 #[test]
-fn test_bytes_base64_attribute() {
+fn bytes_base64_attribute() {
     let bytes: &[u8] = b"hello";
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -368,7 +368,7 @@ fn test_bytes_base64_attribute() {
 }
 
 #[test]
-fn test_interned_string_reuse() {
+fn interned_string_reuse() {
     // Use "pkg" twice via pool index 0.
     let mut body = vec![CMD_START_DOCUMENT];
     // First START_TAG introduces "pkg" (pool[0])
@@ -396,7 +396,7 @@ fn test_interned_string_reuse() {
 }
 
 #[test]
-fn test_text_event() {
+fn text_event() {
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("root"));
@@ -413,7 +413,7 @@ fn test_text_event() {
 }
 
 #[test]
-fn test_to_xml_roundtrip() {
+fn to_xml_roundtrip() {
     // <manifest package="com.example" versionCode="42"/>
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
@@ -438,7 +438,7 @@ fn test_to_xml_roundtrip() {
 }
 
 #[test]
-fn test_find_attribute() {
+fn find_attribute() {
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("component"));
@@ -457,7 +457,7 @@ fn test_find_attribute() {
 }
 
 #[test]
-fn test_xml_entity_escaping() {
+fn xml_entity_escaping() {
     // Attribute value containing XML special chars.
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
