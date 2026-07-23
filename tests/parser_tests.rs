@@ -677,6 +677,23 @@ fn stream_write_xml() {
 }
 
 #[test]
+fn slice_write_xml() {
+    let mut body = vec![CMD_START_DOCUMENT];
+    body.push(TYPE_STRING | CMD_START_TAG);
+    body.extend(interned_new("root"));
+    body.push(TYPE_STRING | CMD_END_TAG);
+    body.extend(interned_ref(0));
+    body.push(CMD_END_DOCUMENT);
+
+    let data = with_magic(&body);
+    let mut out: Vec<u8> = Vec::new();
+    AbxParser::new(&data).unwrap().write_xml(&mut out).unwrap();
+    let s = String::from_utf8(out).unwrap();
+    assert!(s.contains("<root>"));
+    assert!(s.contains("</root>"));
+}
+
+#[test]
 fn stream_find_attribute() {
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);

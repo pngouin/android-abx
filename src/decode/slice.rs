@@ -331,6 +331,27 @@ impl<'a> AbxParser<'a> {
         Ok(buf)
     }
 
+    /// Write the rest of the document as XML into any `std::io::Write` sink.
+    ///
+    /// More memory-efficient than [`to_xml`](AbxParser::to_xml) for very
+    /// large documents because it does not accumulate the whole result in a
+    /// `String`.
+    pub fn write_xml(&mut self, writer: &mut impl std::io::Write) -> Result<()> {
+        writer.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
+        // One scratch buffer reused (cleared, not reallocated) across every
+        // event, instead of a fresh allocation per event.
+        let mut tmp = String::new();
+        while let Some(ev) = self.next_event()? {
+            if matches!(ev, Event::EndDocument) {
+                break;
+            }
+            tmp.clear();
+            render_event(&ev, &mut tmp);
+            writer.write_all(tmp.as_bytes())?;
+        }
+        Ok(())
+    }
+
     /// Find the next `<element>`, deserialize its attributes (and direct
     /// text content, via a `#[serde(rename = "$text")]` field) into `T`,
     /// then skip past its matching end tag. `Ok(None)` at end of document.
