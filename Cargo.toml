@@ -36,6 +36,12 @@ default = []
 serialize = ["dep:serde"]
 xml = ["dep:quick-xml"]
 
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+
 [[example]]
 name = "abx2xml"
 path = "examples/abx2xml.rs"
