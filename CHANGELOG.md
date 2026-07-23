@@ -4,7 +4,12 @@ All notable changes to this project are documented in this file, generated
 automatically from [Conventional Commits](https://www.conventionalcommits.org/)
 history by [git-cliff](https://git-cliff.org/).
 
-## [Unreleased]
+## [0.1.1] - 2026-07-23
+
+### Features
+
+- *(release)* Auto-generate CHANGELOG.md via git-cliff on each tag
+
 
 ### Styling
 
@@ -14,6 +19,8 @@ history by [git-cliff](https://git-cliff.org/).
 ### CI
 
 - Add GitHub Actions workflow to test every commit and PR
+
+- Harden CI workflow, add Dependabot config and status badges
 
 
 ### Miscellaneous Tasks
@@ -29,6 +36,8 @@ history by [git-cliff](https://git-cliff.org/).
 - *(deps)* Update thiserror 1 -> 2
 
 - *(deps)* Update nom 7 -> 8
+
+- *(release)* Bump version to 0.1.1
 
 
 ## [0.1.0] - 2026-07-23
