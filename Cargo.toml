@@ -1,9 +1,19 @@
 [package]
-name = "abx"
+name = "android-abx"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 description = "Android Binary XML (ABX) parser using nom"
 license = "MIT"
+keywords = ["android", "xml", "binary", "parser", "serialization"]
+categories = ["parser-implementations", "encoding"]
+exclude = ["tests/fixtures/aosp_verify/"]
+
+[lib]
+name = "abx"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 nom = "7"

@@ -5,8 +5,8 @@
 //!
 //! Not to be confused with **AXML**, the unrelated chunk-based binary format
 //! used for compiled resources inside APKs (`AndroidManifest.xml`,
-//! `res/**/*.xml`) — this crate does not read that format. See `CLAUDE.md`
-//! for the comparison.
+//! `res/**/*.xml`) — this crate does not read that format. See the crate
+//! README's "Not AXML" section for the comparison.
 //!
 //! ## Two parsers, one format
 //!
@@ -54,6 +54,8 @@
 //! [`stream`]), and `de` (serde support, behind the `serialize` feature)
 //! are internal modules — everything is re-exported at the crate root, so
 //! `abx::Event` etc. work regardless of which file it's defined in.
+
+#![warn(missing_docs)]
 
 mod error;
 pub use error::{AbxError, Result};

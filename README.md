@@ -12,12 +12,16 @@ real encoded files in both directions — not just this crate's own tests.
 
 ```toml
 [dependencies]
-abx = "0.1"
+android-abx = "0.1"
 # or, for serde support:
-abx = { version = "0.1", features = ["serialize"] }
+android-abx = { version = "0.1", features = ["serialize"] }
 # or, to encode XML text into ABX bytes:
-abx = { version = "0.1", features = ["xml"] }
+android-abx = { version = "0.1", features = ["xml"] }
 ```
+
+The crates.io package is `android-abx`; the Rust import path stays `abx`
+(set via `[lib] name` in `Cargo.toml`), so all the code below is
+`use abx::...`, not `use android_abx::...`.
 
 ## Not AXML
 
@@ -307,6 +311,14 @@ Two optimization passes came out of these benchmarks:
 - `xml` — `xml_to_abx`, encoding plain XML text into ABX bytes (pulls in
   `quick-xml`). The lower-level `AbxWriter`/`events_to_abx` need no extra
   dependency and are always available.
+
+## About this project
+
+This crate has also served as a real-world test case for agentic AI coding
+assistants — used to evaluate how such tools handle a non-trivial Rust
+project over many sessions: implementing a binary format parser/encoder,
+cross-checking it against real upstream (AOSP) source, and general ongoing
+maintenance.
 
 ## License
 

@@ -23,18 +23,29 @@ fn format_signed_hex(v: i64) -> String {
 /// The typed payload of an XML attribute.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AttributeValue {
+    /// No value (AOSP's `TYPE_NULL`).
     Null,
+    /// A plain UTF-8 string.
     String(String),
     /// Bytes whose canonical text form is lowercase hex.
     BytesHex(Vec<u8>),
     /// Bytes whose canonical text form is Base64.
     BytesBase64(Vec<u8>),
+    /// A 32-bit signed integer, rendered in decimal.
     Int(i32),
+    /// A 32-bit value rendered in hex — see [`AttributeValue::as_str`] for
+    /// the signed-magnitude rendering rule this follows.
     IntHex(u32),
+    /// A 64-bit signed integer, rendered in decimal.
     Long(i64),
+    /// A 64-bit value rendered in hex — see [`AttributeValue::as_str`] for
+    /// the signed-magnitude rendering rule this follows.
     LongHex(u64),
+    /// A 32-bit floating-point value.
     Float(f32),
+    /// A 64-bit floating-point value.
     Double(f64),
+    /// A boolean, rendered as `"true"`/`"false"`.
     Boolean(bool),
 }
 
@@ -80,30 +91,40 @@ impl AttributeValue {
 
     // Typed accessors ----------------------------------------------------------
 
+    /// Returns the inner string if this is [`AttributeValue::String`], else `None`.
     pub fn as_string(&self) -> Option<&str> {
         if let AttributeValue::String(s) = self { Some(s) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::Int`], else `None`.
     pub fn as_int(&self) -> Option<i32> {
         if let AttributeValue::Int(v) = self { Some(*v) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::IntHex`], else `None`.
     pub fn as_int_hex(&self) -> Option<u32> {
         if let AttributeValue::IntHex(v) = self { Some(*v) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::Long`], else `None`.
     pub fn as_long(&self) -> Option<i64> {
         if let AttributeValue::Long(v) = self { Some(*v) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::LongHex`], else `None`.
     pub fn as_long_hex(&self) -> Option<u64> {
         if let AttributeValue::LongHex(v) = self { Some(*v) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::Float`], else `None`.
     pub fn as_float(&self) -> Option<f32> {
         if let AttributeValue::Float(v) = self { Some(*v) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::Double`], else `None`.
     pub fn as_double(&self) -> Option<f64> {
         if let AttributeValue::Double(v) = self { Some(*v) } else { None }
     }
+    /// Returns the inner value if this is [`AttributeValue::Boolean`], else `None`.
     pub fn as_bool(&self) -> Option<bool> {
         if let AttributeValue::Boolean(b) = self { Some(*b) } else { None }
     }
+    /// Returns the inner bytes if this is [`AttributeValue::BytesHex`] or
+    /// [`AttributeValue::BytesBase64`], else `None`.
     pub fn as_bytes(&self) -> Option<&[u8]> {
         match self {
             AttributeValue::BytesHex(b) | AttributeValue::BytesBase64(b) => Some(b),
@@ -131,13 +152,18 @@ pub type InternedStr = smol_str::SmolStr;
 // Attribute
 // ---------------------------------------------------------------------------
 
+/// One XML attribute: a name plus its typed value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
+    /// The attribute's name.
     pub name: InternedStr,
+    /// The attribute's typed value.
     pub value: AttributeValue,
 }
 
 impl Attribute {
+    /// Render [`Attribute::value`] as a human-readable string; see
+    /// [`AttributeValue::as_str`].
     pub fn as_str(&self) -> std::borrow::Cow<'_, str> {
         self.value.as_str()
     }
@@ -147,18 +173,41 @@ impl Attribute {
 // XML Event  (shared by both parsers)
 // ---------------------------------------------------------------------------
 
+/// One `XmlPullParser`-style parse event, as read from (or written to) an
+/// ABX stream.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
+    /// The start of the document — always the first event.
     StartDocument,
+    /// The end of the document — always the last event.
     EndDocument,
-    StartTag { name: InternedStr, attributes: Vec<Attribute> },
-    EndTag { name: InternedStr },
+    /// The opening tag of an element, with its attributes.
+    StartTag {
+        /// The element's tag name.
+        name: InternedStr,
+        /// The element's attributes, in document order.
+        attributes: Vec<Attribute>,
+    },
+    /// The closing tag of an element.
+    EndTag {
+        /// The element's tag name, matching the corresponding [`Event::StartTag`].
+        name: InternedStr,
+    },
+    /// Plain character data between tags.
     Text(String),
+    /// A `<![CDATA[...]]>` section's raw content.
     CdataSection(String),
+    /// A `<!--...-->` comment's raw content.
     Comment(String),
+    /// A `<?...?>` processing instruction's raw content.
     ProcessingInstruction(String),
+    /// An entity reference's raw name (e.g. `"amp"` for `&amp;`), not the
+    /// resolved character — see the crate docs for why.
     EntityReference(String),
+    /// Whitespace-only character data that a validating parser would treat
+    /// as ignorable.
     IgnorableWhitespace(String),
+    /// A `<!DOCTYPE ...>` declaration's raw content.
     DocDecl(String),
 }
 
