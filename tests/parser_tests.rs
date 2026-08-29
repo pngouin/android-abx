@@ -7,7 +7,7 @@
 // not attempts at std::f32::consts::PI/std::f64::consts::E.
 #![allow(clippy::approx_constant)]
 
-use abx::{AbxParser, AttributeValue, Event};
+use android_abx::{AbxParser, AttributeValue, Event};
 
 mod common;
 use common::*;
@@ -16,7 +16,7 @@ use common::*;
 fn invalid_magic() {
     let data = b"\x00\x00\x00\x00rest";
     let err = AbxParser::new(data).unwrap_err();
-    assert!(matches!(err, abx::AbxError::InvalidMagic { .. }));
+    assert!(matches!(err, android_abx::AbxError::InvalidMagic { .. }));
 }
 
 #[test]
@@ -479,7 +479,7 @@ fn xml_entity_escaping() {
 // We reuse the same hand-built ABX blobs but feed them through
 // `AbxStreamParser<Cursor<Vec<u8>>>` to exercise the Read-based path.
 
-use abx::AbxStreamParser;
+use android_abx::AbxStreamParser;
 use std::io::{Cursor, Read};
 
 fn stream(data: Vec<u8>) -> AbxStreamParser<Cursor<Vec<u8>>> {
@@ -489,7 +489,7 @@ fn stream(data: Vec<u8>) -> AbxStreamParser<Cursor<Vec<u8>>> {
 #[test]
 fn stream_invalid_magic() {
     let err = AbxStreamParser::new(Cursor::new(b"\x00\x00\x00\x00rest".to_vec())).unwrap_err();
-    assert!(matches!(err, abx::AbxError::InvalidMagic { .. }));
+    assert!(matches!(err, android_abx::AbxError::InvalidMagic { .. }));
 }
 
 #[test]
@@ -720,7 +720,7 @@ fn stream_iterator() {
     body.push(CMD_END_DOCUMENT);
 
     let events: Vec<Event> = stream(with_magic(&body))
-        .collect::<abx::Result<Vec<_>>>()
+        .collect::<android_abx::Result<Vec<_>>>()
         .unwrap();
 
     assert!(

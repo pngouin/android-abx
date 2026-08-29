@@ -48,7 +48,7 @@ const READ_CHUNK: usize = 4096;
 ///
 /// # Example
 /// ```rust,ignore
-/// use abx::AbxStreamParser;
+/// use android_abx::AbxStreamParser;
 /// use std::io::BufReader;
 ///
 /// let file = std::fs::File::open("backup.abx")?;
@@ -56,13 +56,13 @@ const READ_CHUNK: usize = 4096;
 ///
 /// while let Some(ev) = p.next_event()? {
 ///     match ev {
-///         abx::Event::StartTag { name, attributes } => {
+///         android_abx::Event::StartTag { name, attributes } => {
 ///             println!("<{name}>");
 ///             for a in &attributes {
 ///                 println!("  {}={}", a.name, a.as_str());
 ///             }
 ///         }
-///         abx::Event::EndTag { name } => println!("</{name}>"),
+///         android_abx::Event::EndTag { name } => println!("</{name}>"),
 ///         _ => {}
 ///     }
 /// }

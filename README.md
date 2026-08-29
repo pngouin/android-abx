@@ -25,7 +25,7 @@ android-abx = { version = "0.2", features = ["xml"] }
 
 The crates.io package is `android-abx`; the Rust import path stays `abx`
 (set via `[lib] name` in `Cargo.toml`), so all the code below is
-`use abx::...`, not `use android_abx::...`.
+`use android_abx::...`, not `use android_abx::...`.
 
 ## Not AXML
 
@@ -51,7 +51,7 @@ Walking raw events:
 
 ```rust
 let data = std::fs::read("packages.abx")?;
-let mut p = abx::AbxParser::new(&data)?;
+let mut p = android_abx::AbxParser::new(&data)?;
 while let Some(ev) = p.next_event()? {
     println!("{ev:?}");
 }
@@ -61,7 +61,7 @@ Or streaming from any reader (files, sockets, pipes) without loading the
 whole document into memory:
 
 ```rust
-let mut p = abx::open_file("packages.abx")?;
+let mut p = android_abx::open_file("packages.abx")?;
 let xml = p.to_xml()?;
 ```
 
@@ -75,8 +75,8 @@ struct Settings {
     count: i32,
 }
 
-let settings: Settings = abx::from_file("settings.abx")?;
-// or abx::from_slice(&bytes) / abx::from_reader(reader)
+let settings: Settings = android_abx::from_file("settings.abx")?;
+// or android_abx::from_slice(&bytes) / android_abx::from_reader(reader)
 ```
 
 For a wrapper document containing many repeated records — e.g. AOSP's
@@ -89,7 +89,7 @@ struct Pkg {
     version: Option<i32>,
 }
 
-let mut p = abx::open_file("packages.abx")?;
+let mut p = android_abx::open_file("packages.abx")?;
 for pkg in p.deserialize_iter::<Pkg>("pkg") {
     println!("{:?}", pkg?);
 }
@@ -106,7 +106,7 @@ to `quick-xml`'s.
 With `xml`, encode plain XML text straight into ABX bytes:
 
 ```rust
-let bytes = abx::xml_to_abx(&xml_string)?;
+let bytes = android_abx::xml_to_abx(&xml_string)?;
 std::fs::write("packages.abx", bytes)?;
 ```
 
@@ -118,15 +118,15 @@ directly and hand it to the lower-level encoder instead:
 
 ```rust
 let events = vec![
-    abx::Event::StartDocument,
-    abx::Event::StartTag {
+    android_abx::Event::StartDocument,
+    android_abx::Event::StartTag {
         name: "settings".into(),
-        attributes: vec![abx::Attribute { name: "count".into(), value: abx::AttributeValue::Int(42) }],
+        attributes: vec![android_abx::Attribute { name: "count".into(), value: android_abx::AttributeValue::Int(42) }],
     },
-    abx::Event::EndTag { name: "settings".into() },
-    abx::Event::EndDocument,
+    android_abx::Event::EndTag { name: "settings".into() },
+    android_abx::Event::EndDocument,
 ];
-let bytes = abx::events_to_abx(&events)?;
+let bytes = android_abx::events_to_abx(&events)?;
 ```
 
 ## Design

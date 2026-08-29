@@ -32,19 +32,19 @@
 //!
 //! ```rust,ignore
 //! // Slice-based
-//! use abx::AbxParser;
+//! use android_abx::AbxParser;
 //! let data = std::fs::read("foo.abx")?;
 //! let mut p = AbxParser::new(&data)?;
 //! while let Some(ev) = p.next_event()? { println!("{ev:?}"); }
 //!
 //! // Stream-based (no intermediate Vec)
-//! use abx::AbxStreamParser;
+//! use android_abx::AbxStreamParser;
 //! let file = std::fs::File::open("foo.abx")?;
 //! let mut p = AbxStreamParser::new(std::io::BufReader::new(file))?;
 //! while let Some(ev) = p.next_event()? { println!("{ev:?}"); }
 //!
 //! // Convenience helper
-//! let mut p = abx::open_file("foo.abx")?;
+//! let mut p = android_abx::open_file("foo.abx")?;
 //! let xml = p.to_xml()?;
 //! ```
 //!
@@ -53,7 +53,7 @@
 //! `error`, `wire`, `event`, `decode` (in-memory + streaming parsers, see
 //! [`stream`]), and `de` (serde support, behind the `serialize` feature)
 //! are internal modules — everything is re-exported at the crate root, so
-//! `abx::Event` etc. work regardless of which file it's defined in.
+//! `android_abx::Event` etc. work regardless of which file it's defined in.
 
 #![warn(missing_docs)]
 

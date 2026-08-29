@@ -33,7 +33,7 @@ fn main() {
         })
     };
 
-    let xml = abx::abx_to_xml(&data).unwrap_or_else(|e| {
+    let xml = android_abx::abx_to_xml(&data).unwrap_or_else(|e| {
         eprintln!("Parse error: {e}");
         process::exit(1);
     });

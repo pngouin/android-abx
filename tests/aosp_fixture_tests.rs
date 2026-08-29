@@ -34,7 +34,7 @@
 // representation of the literal itself is what's under test.
 #![allow(clippy::approx_constant)]
 
-use abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue, Event};
+use android_abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue, Event};
 use std::io::Cursor;
 
 mod common;
@@ -115,7 +115,7 @@ fn simple_pkg_fixture() {
         ]
     );
 
-    let xml = abx::abx_to_xml(data).unwrap();
+    let xml = android_abx::abx_to_xml(data).unwrap();
     assert_eq!(
         xml,
         r#"<?xml version="1.0" encoding="UTF-8"?><pkg name="com.example.chat" version="3" flags="1"></pkg>"#
@@ -216,7 +216,7 @@ fn booleans_fixture_typed_attributes() {
     assert_eq!(*attr(attributes, "count"), AttributeValue::Int(12345));
     assert_eq!(*attr(attributes, "ratio"), AttributeValue::Double(3.14));
 
-    let xml = abx::abx_to_xml(data).unwrap();
+    let xml = android_abx::abx_to_xml(data).unwrap();
     assert!(xml.contains(r#"enabled="true" hidden="false" count="12345" ratio="3.14""#));
 
     let mut start = common::start_tag("settings");
@@ -257,7 +257,7 @@ fn special_chars_fixture() {
     // Harness.java, the same way a real XML-aware caller built on this API
     // would emit entities as distinct tokens -- this crate reconstructs
     // the exact original escaped form on re-render either way.
-    let xml = abx::abx_to_xml(data).unwrap();
+    let xml = android_abx::abx_to_xml(data).unwrap();
     assert!(xml.contains(r#"title="Tom &amp; Jerry &lt;3&gt;""#));
     assert!(xml.contains(r#">Use &quot;quotes&quot; &amp; &apos;apostrophes&apos; safely<"#));
 
@@ -483,7 +483,7 @@ fn aosp_verify_fixture() {
 
     // events_to_abx re-encoding this real-AOSP-decoded stream must byte-match
     // the real AOSP serializer's own output exactly.
-    assert_eq!(abx::events_to_abx(&evs).unwrap(), data);
+    assert_eq!(android_abx::events_to_abx(&evs).unwrap(), data);
 
     let mut root_start = common::start_tag("root");
     root_start.extend(common::attr_string("str", "hello"));

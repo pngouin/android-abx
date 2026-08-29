@@ -3,7 +3,7 @@
 //! self-contained with no binary fixtures required).
 #![allow(dead_code)]
 
-use abx::MAGIC;
+use android_abx::MAGIC;
 
 pub fn u16_be(v: u16) -> [u8; 2] {
     v.to_be_bytes()

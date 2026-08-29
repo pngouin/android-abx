@@ -7,7 +7,7 @@
 
 use std::io::Cursor;
 
-use abx::{AbxParser, AbxStreamParser};
+use android_abx::{AbxParser, AbxStreamParser};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
 
@@ -71,7 +71,7 @@ fn bench_to_xml(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(data.len() as u64));
 
         group.bench_with_input(BenchmarkId::new("AbxParser", n), &data, |b, data| {
-            b.iter(|| black_box(abx::abx_to_xml(black_box(data)).unwrap()));
+            b.iter(|| black_box(android_abx::abx_to_xml(black_box(data)).unwrap()));
         });
 
         group.bench_with_input(BenchmarkId::new("AbxStreamParser", n), &data, |b, data| {

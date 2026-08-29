@@ -10,7 +10,7 @@
 //!
 //! This is for a *wrapper* document — many repeated `<element>`s under some
 //! outer root. If your whole document is a single record instead, see
-//! `serde_root` (`abx::from_file`) — much less code for that shape.
+//! `serde_root` (`android_abx::from_file`) — much less code for that shape.
 
 use std::{env, process};
 
@@ -34,7 +34,7 @@ fn main() {
 
     let element = args.get(1).map(String::as_str).unwrap_or("pkg");
 
-    let mut parser = abx::open_file(&args[0]).unwrap_or_else(|e| {
+    let mut parser = android_abx::open_file(&args[0]).unwrap_or_else(|e| {
         eprintln!("Error opening '{}': {e}", args[0]);
         process::exit(1);
     });

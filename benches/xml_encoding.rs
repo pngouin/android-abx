@@ -18,7 +18,7 @@ fn bench_xml_to_abx(c: &mut Criterion) {
         group.throughput(Throughput::Bytes(xml.len() as u64));
 
         group.bench_with_input(BenchmarkId::new("xml_to_abx", n), &xml, |b, xml| {
-            b.iter(|| black_box(abx::xml_to_abx(black_box(xml)).unwrap()));
+            b.iter(|| black_box(android_abx::xml_to_abx(black_box(xml)).unwrap()));
         });
     }
     group.finish();

@@ -34,7 +34,7 @@ fn main() {
         })
     };
 
-    let data = abx::xml_to_abx(&xml).unwrap_or_else(|e| {
+    let data = android_abx::xml_to_abx(&xml).unwrap_or_else(|e| {
         eprintln!("Encode error: {e}");
         process::exit(1);
     });
