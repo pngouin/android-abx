@@ -2,11 +2,11 @@
 //! Integration tests for the XML-text → ABX pipeline (`xml_to_abx`, needs
 //! the `xml` feature / `quick-xml`).
 
-use abx::{AbxParser, Attribute, AttributeValue, Event};
+use android_abx::{AbxParser, Attribute, AttributeValue, Event};
 
 #[test]
 fn xml_to_abx_encodes_self_closing_tag() {
-    let bytes = abx::xml_to_abx("<a/>").unwrap();
+    let bytes = android_abx::xml_to_abx("<a/>").unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
     assert_eq!(
         events,
@@ -30,7 +30,7 @@ fn attr<'a>(attributes: &'a [Attribute], name: &str) -> &'a AttributeValue {
 fn xml_to_abx_encodes_cdata_comment_pi_doctype() {
     let xml =
         "<!DOCTYPE root><root><!--a comment--><![CDATA[raw <not-a-tag>]]><?pi target data?></root>";
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
     assert_eq!(
         events,
@@ -58,7 +58,7 @@ fn xml_to_abx_passes_namespace_prefixed_names_through_opaquely() {
     // crate's Event/Attribute model has no namespace concept, so `foo:bar`
     // stays a literal opaque name, matching how ABX itself treats it.
     let xml = r#"<ns:root xmlns:ns="urn:example" ns:attr="v"></ns:root>"#;
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
     match &events[1] {
         Event::StartTag { name, attributes } => {
@@ -81,7 +81,7 @@ fn xml_to_abx_preserves_whitespace_only_text_literally() {
     // No IgnorableWhitespace guessing: indentation between sibling elements
     // is preserved as ordinary Text, byte for byte.
     let xml = "<root>\n  <a/>\n  <b/>\n</root>";
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
     assert_eq!(
         events,
@@ -119,7 +119,7 @@ fn s(v: &str) -> AttributeValue {
 #[test]
 fn simple_pkg_fixture_round_trips() {
     let xml = include_str!("fixtures/simple_pkg.xml");
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let attrs = AbxParser::new(&bytes)
         .unwrap()
         .attributes_of("pkg")
@@ -133,7 +133,7 @@ fn simple_pkg_fixture_round_trips() {
 #[test]
 fn nested_permissions_fixture_round_trips() {
     let xml = include_str!("fixtures/nested_permissions.xml");
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
 
     let pkg_name = events.iter().find_map(|e| match e {
@@ -170,7 +170,7 @@ fn booleans_fixture_stays_string_typed() {
     // xml2abx infers TYPE_BOOLEAN_TRUE/FALSE here; xml_to_abx does not --
     // every attribute value stays a plain String.
     let xml = include_str!("fixtures/booleans.xml");
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let attrs = AbxParser::new(&bytes)
         .unwrap()
         .attributes_of("settings")
@@ -185,7 +185,7 @@ fn booleans_fixture_stays_string_typed() {
 #[test]
 fn repeated_strings_fixture_round_trips() {
     let xml = include_str!("fixtures/repeated_strings.xml");
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let events = AbxParser::new(&bytes).unwrap().collect_events().unwrap();
 
     let items: Vec<(&str, &str, &str)> = events
@@ -219,15 +219,15 @@ fn special_chars_fixture_decodes_entities_consistently() {
     // Unlike xml2abx (which leaves attribute-value entities raw/escaped),
     // xml_to_abx decodes entities the same way in attributes and text.
     let xml = include_str!("fixtures/special_chars.xml");
-    let bytes = abx::xml_to_abx(xml).unwrap();
+    let bytes = android_abx::xml_to_abx(xml).unwrap();
     let mut p = AbxParser::new(&bytes).unwrap();
     let attrs = p.attributes_of("note").unwrap().unwrap();
     assert_eq!(*attr(&attrs, "title"), s("Tom & Jerry <3>"));
 
     // Round-tripping back to XML re-escapes the decoded characters, so the
     // rendered attribute text matches the original source exactly.
-    let full_xml = abx::xml_to_abx(xml)
-        .and_then(|b| abx::abx_to_xml(&b))
+    let full_xml = android_abx::xml_to_abx(xml)
+        .and_then(|b| android_abx::abx_to_xml(&b))
         .unwrap();
     assert!(full_xml.contains(r#"title="Tom &amp; Jerry &lt;3&gt;""#));
     assert!(full_xml.contains(r#">Use &quot;quotes&quot; &amp; &apos;apostrophes&apos; safely<"#));

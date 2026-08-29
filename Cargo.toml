@@ -12,9 +12,6 @@ keywords = ["android", "xml", "binary", "parser", "serialization"]
 categories = ["parser-implementations", "encoding"]
 exclude = ["tests/fixtures/aosp_verify/", "cliff.toml"]
 
-[lib]
-name = "abx"
-
 [package.metadata.docs.rs]
 all-features = true
 

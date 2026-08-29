@@ -11,7 +11,7 @@
 
 use std::io::Cursor;
 
-use abx::{AbxParser, AbxStreamParser};
+use android_abx::{AbxParser, AbxStreamParser};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -41,7 +41,7 @@ fn simple_pkg_fixture_via_from_slice_matches_deserialize_next() {
     // The one-shot entry point should need neither a parser instance nor
     // the "pkg" tag name spelled out -- same real fixture, same result.
     let data = include_bytes!("fixtures/simple_pkg.abx");
-    let pkg: SimplePkg = abx::from_slice(data).unwrap();
+    let pkg: SimplePkg = android_abx::from_slice(data).unwrap();
     assert_eq!(
         pkg,
         SimplePkg {
@@ -55,7 +55,7 @@ fn simple_pkg_fixture_via_from_slice_matches_deserialize_next() {
 #[test]
 fn simple_pkg_fixture_via_from_file() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx");
-    let pkg: SimplePkg = abx::from_file(path).unwrap();
+    let pkg: SimplePkg = android_abx::from_file(path).unwrap();
     assert_eq!(
         pkg,
         SimplePkg {
@@ -199,7 +199,7 @@ fn repeated_strings_fixture_deserialize_iter_streaming_matches_slice() {
     let mut stream_p = AbxStreamParser::new(Cursor::new(data.to_vec())).unwrap();
     let streamed: Vec<Item> = stream_p
         .deserialize_iter::<Item>("item")
-        .collect::<abx::Result<Vec<Item>>>()
+        .collect::<android_abx::Result<Vec<Item>>>()
         .unwrap();
     assert_eq!(streamed, expected_items());
 }

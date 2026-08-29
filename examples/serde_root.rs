@@ -31,7 +31,7 @@ fn main() {
         process::exit(if args.is_empty() { 1 } else { 0 });
     }
 
-    let pkg: Pkg = abx::from_file(&args[0]).unwrap_or_else(|e| {
+    let pkg: Pkg = android_abx::from_file(&args[0]).unwrap_or_else(|e| {
         eprintln!("Error reading '{}': {e}", args[0]);
         process::exit(1);
     });

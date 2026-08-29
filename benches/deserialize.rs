@@ -7,7 +7,7 @@
 
 use std::io::Cursor;
 
-use abx::{AbxParser, AbxStreamParser};
+use android_abx::{AbxParser, AbxStreamParser};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use serde::Deserialize;
 use std::hint::black_box;
@@ -59,7 +59,7 @@ fn bench_streaming_deserialize_vs_raw_events(c: &mut Criterion) {
                 let mut p = AbxStreamParser::new(Cursor::new(black_box(data.clone()))).unwrap();
                 black_box(
                     p.deserialize_iter::<Pkg>("pkg")
-                        .collect::<abx::Result<Vec<Pkg>>>()
+                        .collect::<android_abx::Result<Vec<Pkg>>>()
                         .unwrap(),
                 )
             });

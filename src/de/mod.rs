@@ -8,9 +8,9 @@
 //! shape as `serde_json::from_slice`/`quick_xml::de::from_str`:
 //!
 //! ```rust,ignore
-//! let pkg: Pkg = abx::from_file("pkg.abx")?;   // from a path
-//! let pkg: Pkg = abx::from_slice(&bytes)?;     // from an in-memory buffer
-//! let pkg: Pkg = abx::from_reader(reader)?;    // from any std::io::Read
+//! let pkg: Pkg = android_abx::from_file("pkg.abx")?;   // from a path
+//! let pkg: Pkg = android_abx::from_slice(&bytes)?;     // from an in-memory buffer
+//! let pkg: Pkg = android_abx::from_reader(reader)?;    // from any std::io::Read
 //! ```
 //!
 //! None of these check the root element's tag name against `T` —
@@ -21,7 +21,7 @@
 //! `<pkg>` children), use the parser directly and name the repeated element:
 //!
 //! ```rust,ignore
-//! let mut p = abx::open_file("packages.abx")?;
+//! let mut p = android_abx::open_file("packages.abx")?;
 //! let pkgs: Vec<Pkg> = p.deserialize_all("pkg")?;
 //! ```
 //!

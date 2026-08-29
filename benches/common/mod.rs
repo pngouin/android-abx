@@ -7,7 +7,7 @@
 mod wire;
 pub use wire::*;
 
-use abx::{Attribute, AttributeValue, Event};
+use android_abx::{Attribute, AttributeValue, Event};
 
 /// A synthetic ABX document with `n` repeated `<pkg>` elements, each
 /// carrying a string, an int, and a bool attribute — roughly the shape of

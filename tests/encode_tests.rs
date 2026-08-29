@@ -6,7 +6,7 @@
 // attempt at std::f64::consts::E.
 #![allow(clippy::approx_constant)]
 
-use abx::{AbxWriter, Attribute, AttributeValue, Event};
+use android_abx::{AbxWriter, Attribute, AttributeValue, Event};
 
 mod common;
 
@@ -37,7 +37,7 @@ fn assert_single_attr_roundtrip(value: AttributeValue, attr_bytes: Vec<u8>) {
 #[test]
 fn writer_writes_magic_header() {
     let w = AbxWriter::new(Vec::new()).unwrap();
-    assert_eq!(w.into_inner(), abx::MAGIC.to_vec());
+    assert_eq!(w.into_inner(), android_abx::MAGIC.to_vec());
 }
 
 #[test]
@@ -313,8 +313,8 @@ fn events_to_abx_round_trips_through_decoder() {
         Event::EndDocument,
     ];
 
-    let bytes = abx::events_to_abx(&events).unwrap();
-    let decoded = abx::AbxParser::new(&bytes)
+    let bytes = android_abx::events_to_abx(&events).unwrap();
+    let decoded = android_abx::AbxParser::new(&bytes)
         .unwrap()
         .collect_events()
         .unwrap();
@@ -332,7 +332,7 @@ fn writer_encodes_string_at_max_length_boundary() {
     w.write_event(&Event::EndDocument).unwrap();
 
     let bytes = w.into_inner();
-    let evs = abx::AbxParser::new(&bytes)
+    let evs = android_abx::AbxParser::new(&bytes)
         .unwrap()
         .collect_events()
         .unwrap();
@@ -352,7 +352,7 @@ fn writer_errors_on_oversized_text() {
     let err = w.write_event(&Event::Text(s)).unwrap_err();
     assert!(matches!(
         err,
-        abx::AbxError::ValueTooLong {
+        android_abx::AbxError::ValueTooLong {
             len: 65_536,
             max: 65_535
         }
@@ -377,7 +377,7 @@ fn writer_errors_on_oversized_attr_string() {
         .unwrap_err();
     assert!(matches!(
         err,
-        abx::AbxError::ValueTooLong {
+        android_abx::AbxError::ValueTooLong {
             len: 65_536,
             max: 65_535
         }
@@ -403,7 +403,7 @@ fn writer_errors_on_oversized_bytes_blob() {
         .unwrap_err();
     assert!(matches!(
         err,
-        abx::AbxError::ValueTooLong {
+        android_abx::AbxError::ValueTooLong {
             len: 65_536,
             max: 65_535
         }
@@ -439,7 +439,7 @@ fn writer_gracefully_degrades_past_interned_pool_limit() {
     .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
-    let events = abx::AbxParser::new(&w.into_inner())
+    let events = android_abx::AbxParser::new(&w.into_inner())
         .unwrap()
         .collect_events()
         .unwrap();

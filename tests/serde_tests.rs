@@ -8,7 +8,7 @@
 
 use std::io::Cursor;
 
-use abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue};
+use android_abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue};
 use serde::Deserialize;
 
 mod common;
@@ -51,7 +51,7 @@ fn from_element_direct_no_parser() {
             value: AttributeValue::Int(9),
         },
     ];
-    let pkg: Pkg = abx::from_element(&attrs, None).unwrap();
+    let pkg: Pkg = android_abx::from_element(&attrs, None).unwrap();
     assert_eq!(
         pkg,
         Pkg {
@@ -243,7 +243,7 @@ fn deserialize_bytes_field() {
 fn deserialize_missing_element_returns_none() {
     let data = document(&[start_tag("a"), end_tag("a")]);
     let mut p = AbxParser::new(&data).unwrap();
-    let result: abx::Result<Option<Pkg>> = p.deserialize_next("pkg");
+    let result: android_abx::Result<Option<Pkg>> = p.deserialize_next("pkg");
     assert!(matches!(result, Ok(None)));
 }
 
@@ -283,7 +283,7 @@ fn deserialize_deny_unknown_fields_errors() {
         end_tag("pkg"),
     ]);
     let mut p = AbxParser::new(&data).unwrap();
-    let result: abx::Result<Option<Strict>> = p.deserialize_next("pkg");
+    let result: android_abx::Result<Option<Strict>> = p.deserialize_next("pkg");
     assert!(
         result.is_err(),
         "expected deny_unknown_fields to reject 'extra'"
@@ -327,7 +327,7 @@ fn deserialize_iter_lazy_streaming() {
     let mut stream_parser = AbxStreamParser::new(Cursor::new(data)).unwrap();
     let items: Vec<Item> = stream_parser
         .deserialize_iter::<Item>("item")
-        .collect::<abx::Result<Vec<Item>>>()
+        .collect::<android_abx::Result<Vec<Item>>>()
         .unwrap();
 
     assert_eq!(items.len(), 5);
@@ -399,7 +399,7 @@ fn deserialize_enum_field_from_text_content() {
 fn deserialize_enum_unknown_variant_errors() {
     let data = document(&[start_tag("e"), attr_string("status", "bogus"), end_tag("e")]);
     let mut p = AbxParser::new(&data).unwrap();
-    let result: abx::Result<Option<Entry>> = p.deserialize_next("e");
+    let result: android_abx::Result<Option<Entry>> = p.deserialize_next("e");
     assert!(result.is_err(), "unknown enum variant should be rejected");
 }
 
@@ -673,7 +673,7 @@ fn deserialize_deny_unknown_fields_rejects_unknown_child() {
         end_tag("pkg"),
     ]);
     let mut p = AbxParser::new(&data).unwrap();
-    let result: abx::Result<Option<StrictNoChildren>> = p.deserialize_next("pkg");
+    let result: android_abx::Result<Option<StrictNoChildren>> = p.deserialize_next("pkg");
     assert!(
         result.is_err(),
         "deny_unknown_fields should reject an unmapped child element too"
@@ -688,7 +688,7 @@ fn from_slice_deserializes_root_element_regardless_of_tag_name() {
         attr_int("version", 3),
         end_tag("anything"),
     ]);
-    let pkg: Pkg = abx::from_slice(&data).unwrap();
+    let pkg: Pkg = android_abx::from_slice(&data).unwrap();
     assert_eq!(
         pkg,
         Pkg {
@@ -706,7 +706,7 @@ fn from_reader_deserializes_root_element_streaming() {
         attr_int("version", 3),
         end_tag("pkg"),
     ]);
-    let pkg: Pkg = abx::from_reader(Cursor::new(data)).unwrap();
+    let pkg: Pkg = android_abx::from_reader(Cursor::new(data)).unwrap();
     assert_eq!(
         pkg,
         Pkg {
@@ -724,15 +724,15 @@ fn from_slice_and_from_reader_agree() {
         attr_int("version", 7),
         end_tag("pkg"),
     ]);
-    let via_slice: Pkg = abx::from_slice(&data).unwrap();
-    let via_reader: Pkg = abx::from_reader(Cursor::new(data)).unwrap();
+    let via_slice: Pkg = android_abx::from_slice(&data).unwrap();
+    let via_reader: Pkg = android_abx::from_reader(Cursor::new(data)).unwrap();
     assert_eq!(via_slice, via_reader);
 }
 
 #[test]
 fn from_slice_errors_when_document_has_no_root_element() {
     let data = document(&[]); // StartDocument + EndDocument only
-    let result: abx::Result<Pkg> = abx::from_slice(&data);
+    let result: android_abx::Result<Pkg> = android_abx::from_slice(&data);
     assert!(
         result.is_err(),
         "a document with no elements at all should not silently succeed"
@@ -766,7 +766,7 @@ fn from_slice_supports_nested_children_like_deserialize_next() {
         permission: Vec<Permission>,
     }
 
-    let pkg: PkgWithPerms = abx::from_slice(&data).unwrap();
+    let pkg: PkgWithPerms = android_abx::from_slice(&data).unwrap();
     assert_eq!(
         pkg,
         PkgWithPerms {
