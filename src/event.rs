@@ -85,8 +85,6 @@ impl AttributeValue {
         }
     }
 
-    // Typed accessors ----------------------------------------------------------
-
     /// Returns the inner string if this is [`AttributeValue::String`], else `None`.
     pub fn as_string(&self) -> Option<&str> {
         if let AttributeValue::String(s) = self {

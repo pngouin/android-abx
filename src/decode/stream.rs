@@ -83,10 +83,6 @@ pub struct AbxStreamParser<R: Read> {
 }
 
 impl<R: Read> AbxStreamParser<R> {
-    // -----------------------------------------------------------------------
-    // Constructor
-    // -----------------------------------------------------------------------
-
     /// Create a new parser from any reader.
     ///
     /// Reads and validates the 4-byte magic header immediately.  Returns an
@@ -114,10 +110,6 @@ impl<R: Read> AbxStreamParser<R> {
         p.pos += 4;
         Ok(p)
     }
-
-    // -----------------------------------------------------------------------
-    // Buffer management
-    // -----------------------------------------------------------------------
 
     /// Number of unconsumed bytes currently in the buffer.
     #[inline]
@@ -163,10 +155,6 @@ impl<R: Read> AbxStreamParser<R> {
 
         Ok(())
     }
-
-    // -----------------------------------------------------------------------
-    // Primitive readers (nom-based, with auto-refill on Incomplete)
-    // -----------------------------------------------------------------------
 
     /// Run a nom parser against the unconsumed tail of the buffer, refilling
     /// if necessary.  Returns the parsed value and advances `pos`.
@@ -262,10 +250,6 @@ impl<R: Read> AbxStreamParser<R> {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Attribute value
-    // -----------------------------------------------------------------------
-
     fn read_attr_value(&mut self, type_nibble: u8) -> Result<AttributeValue> {
         match type_nibble {
             TYPE_NULL => Ok(AttributeValue::Null),
@@ -285,21 +269,13 @@ impl<R: Read> AbxStreamParser<R> {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Peek helpers (non-consuming, with refill)
-    // -----------------------------------------------------------------------
-
     /// Peek at the next byte without consuming it. Returns `None` on EOF.
     fn peek_u8(&mut self) -> Result<Option<u8>> {
         self.ensure(1)?;
         Ok(self.buf.get(self.pos).copied())
     }
 
-    // -----------------------------------------------------------------------
-    // Public event API
-    // -----------------------------------------------------------------------
-
-    /// Pull the next [`Event`].  Returns `None` at end of input.
+    /// Pull the next [`Event`]. Returns `None` at end of input.
     pub fn next_event(&mut self) -> Result<Option<Event>> {
         // Refill at least 1 byte.
         self.ensure(1)?;
@@ -387,10 +363,6 @@ impl<R: Read> AbxStreamParser<R> {
 
         Ok(Some(event))
     }
-
-    // -----------------------------------------------------------------------
-    // Convenience API  (same surface as AbxParser)
-    // -----------------------------------------------------------------------
 
     /// Drain all remaining events into a `Vec`.
     pub fn collect_events(&mut self) -> Result<Vec<Event>> {
