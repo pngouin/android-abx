@@ -16,11 +16,11 @@ real encoded files in both directions — not just this crate's own tests.
 
 ```toml
 [dependencies]
-android-abx = "0.2"
+android-abx = "0.3"
 # or, for serde support:
-android-abx = { version = "0.2", features = ["serialize"] }
+android-abx = { version = "0.3", features = ["serialize"] }
 # or, to encode XML text into ABX bytes:
-android-abx = { version = "0.2", features = ["xml"] }
+android-abx = { version = "0.3", features = ["xml"] }
 ```
 
 The crates.io package is `android-abx`; the Rust import path stays `abx`
