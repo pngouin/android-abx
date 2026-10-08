@@ -46,11 +46,5 @@ pub enum AbxError {
     Xml(String),
 }
 
-impl<I: std::fmt::Debug> From<nom::Err<nom::error::Error<I>>> for AbxError {
-    fn from(e: nom::Err<nom::error::Error<I>>) -> Self {
-        AbxError::Nom(format!("{:?}", e))
-    }
-}
-
 /// A [`Result`](std::result::Result) with [`AbxError`] as the error type.
 pub type Result<T> = std::result::Result<T, AbxError>;

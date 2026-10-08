@@ -1,39 +1,9 @@
 use std::collections::HashMap;
 
-use nom::{
-    IResult, Parser,
-    bytes::complete::take,
-    number::complete::{be_f32, be_f64, be_i32, be_i64, be_u8, be_u16},
-};
+use crate::{AbxError, Attribute, AttributeValue, Event, MAGIC, Result, render_event};
 
-use crate::{
-    AbxError, Attribute, AttributeValue, CMD_ATTRIBUTE, CMD_CDSECT, CMD_COMMENT, CMD_DOCDECL,
-    CMD_END_DOCUMENT, CMD_END_TAG, CMD_ENTITY_REF, CMD_IGNORABLE_WHITESPACE,
-    CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT, CMD_START_TAG, CMD_TEXT, Event, MAGIC, Result,
-    TYPE_BOOLEAN_FALSE, TYPE_BOOLEAN_TRUE, TYPE_BYTES_BASE64, TYPE_BYTES_HEX, TYPE_DOUBLE,
-    TYPE_FLOAT, TYPE_INT, TYPE_INT_HEX, TYPE_LONG, TYPE_LONG_HEX, TYPE_NULL, TYPE_STRING,
-    TYPE_STRING_INTERNED, render_event,
-};
-
-use crate::INTERNED_NEW;
+use super::grammar;
 use crate::InternedStr;
-
-fn parse_utf_string(input: &[u8]) -> IResult<&[u8], String> {
-    let (input, len) = be_u16(input)?;
-    let (input, bytes) = take(len).parse(input)?;
-    let s = std::str::from_utf8(bytes)
-        .map_err(|_| {
-            nom::Err::Failure(nom::error::Error::new(input, nom::error::ErrorKind::Verify))
-        })?
-        .to_owned();
-    Ok((input, s))
-}
-
-fn parse_bytes_blob(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
-    let (input, len) = be_u16(input)?;
-    let (input, bytes) = take(len).parse(input)?;
-    Ok((input, bytes.to_vec()))
-}
 
 pub(crate) fn check_magic(input: &[u8]) -> Result<()> {
     let Some(&magic) = input.first_chunk::<4>() else {
@@ -95,163 +65,29 @@ impl<'a> AbxParser<'a> {
         self.rest.is_empty()
     }
 
-    fn run<F, T>(&mut self, f: F) -> Result<T>
-    where
-        F: Fn(&'a [u8]) -> IResult<&'a [u8], T>,
-    {
-        let (rest, val) = f(self.rest).map_err(|e| AbxError::Nom(format!("{e:?}")))?;
-        self.rest = rest;
-        Ok(val)
-    }
-
-    fn read_u8(&mut self) -> Result<u8> {
-        self.run(be_u8)
-    }
-    fn read_u16(&mut self) -> Result<u16> {
-        self.run(be_u16)
-    }
-    fn read_i32(&mut self) -> Result<i32> {
-        self.run(be_i32)
-    }
-    fn read_i64(&mut self) -> Result<i64> {
-        self.run(be_i64)
-    }
-    fn read_f32(&mut self) -> Result<f32> {
-        self.run(be_f32)
-    }
-    fn read_f64(&mut self) -> Result<f64> {
-        self.run(be_f64)
-    }
-
-    fn read_utf(&mut self) -> Result<String> {
-        self.run(parse_utf_string)
-    }
-    fn read_bytes_blob(&mut self) -> Result<Vec<u8>> {
-        self.run(parse_bytes_blob)
-    }
-
-    fn read_interned(&mut self) -> Result<InternedStr> {
-        let idx = self.read_u16()?;
-        if idx == INTERNED_NEW {
-            let s: InternedStr = self.read_utf()?.into();
-            self.pool.push(s.clone());
-            Ok(s)
-        } else {
-            self.pool
-                .get(idx as usize)
-                .cloned()
-                .ok_or(AbxError::BadInternedIndex(idx))
-        }
-    }
-
-    fn read_attr_value(&mut self, type_nibble: u8) -> Result<AttributeValue> {
-        match type_nibble {
-            TYPE_NULL => Ok(AttributeValue::Null),
-            TYPE_STRING => Ok(AttributeValue::String(self.read_utf()?)),
-            TYPE_STRING_INTERNED => Ok(AttributeValue::String(String::from(self.read_interned()?))),
-            TYPE_BYTES_HEX => Ok(AttributeValue::BytesHex(self.read_bytes_blob()?)),
-            TYPE_BYTES_BASE64 => Ok(AttributeValue::BytesBase64(self.read_bytes_blob()?)),
-            TYPE_INT => Ok(AttributeValue::Int(self.read_i32()?)),
-            TYPE_INT_HEX => Ok(AttributeValue::IntHex(self.read_i32()? as u32)),
-            TYPE_LONG => Ok(AttributeValue::Long(self.read_i64()?)),
-            TYPE_LONG_HEX => Ok(AttributeValue::LongHex(self.read_i64()? as u64)),
-            TYPE_FLOAT => Ok(AttributeValue::Float(self.read_f32()?)),
-            TYPE_DOUBLE => Ok(AttributeValue::Double(self.read_f64()?)),
-            TYPE_BOOLEAN_TRUE => Ok(AttributeValue::Boolean(true)),
-            TYPE_BOOLEAN_FALSE => Ok(AttributeValue::Boolean(false)),
-            other => Err(AbxError::UnknownAttributeType(other)),
-        }
-    }
-
     /// Reads the next event, or returns `None` at the end of the input.
     ///
     /// # Errors
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// The parser's position after an error is unspecified.
+    /// On error, the parser is left at the start of the failing event.
     pub fn next_event(&mut self) -> Result<Option<Event>> {
         if self.rest.is_empty() {
             return Ok(None);
         }
-
-        let token = self.read_u8()?;
-        let cmd = token & 0x0F;
-        let type_nibble = token & 0xF0;
-
-        let event = match cmd {
-            CMD_START_DOCUMENT => Event::StartDocument,
-            CMD_END_DOCUMENT => return Ok(Some(Event::EndDocument)),
-
-            CMD_START_TAG => {
-                let name = self.read_interned()?;
-                let mut attributes = Vec::with_capacity(4);
-                loop {
-                    if self.rest.is_empty() {
-                        break;
-                    }
-                    let next = self.rest[0];
-                    if (next & 0x0F) != CMD_ATTRIBUTE {
-                        break;
-                    }
-                    self.rest = &self.rest[1..];
-                    let attr_type = next & 0xF0;
-                    let attr_name = self.read_interned()?;
-                    let attr_value = self.read_attr_value(attr_type)?;
-                    attributes.push(Attribute {
-                        name: attr_name,
-                        value: attr_value,
-                    });
-                }
-                Event::StartTag { name, attributes }
+        let mut input = self.rest;
+        let pool_len = self.pool.len();
+        match grammar::event(&mut input, &mut self.pool) {
+            Ok(ev) => {
+                self.rest = input;
+                Ok(Some(ev))
             }
-
-            CMD_END_TAG => Event::EndTag {
-                name: self.read_interned()?,
-            },
-
-            CMD_TEXT => Event::Text(if type_nibble == TYPE_STRING {
-                self.read_utf()?
-            } else {
-                String::new()
-            }),
-            CMD_CDSECT => Event::CdataSection(if type_nibble == TYPE_STRING {
-                self.read_utf()?
-            } else {
-                String::new()
-            }),
-            CMD_ENTITY_REF => Event::EntityReference(if type_nibble == TYPE_STRING {
-                self.read_utf()?
-            } else {
-                String::new()
-            }),
-            CMD_IGNORABLE_WHITESPACE => Event::IgnorableWhitespace(if type_nibble == TYPE_STRING {
-                self.read_utf()?
-            } else {
-                String::new()
-            }),
-            CMD_PROCESSING_INSTRUCTION => {
-                Event::ProcessingInstruction(if type_nibble == TYPE_STRING {
-                    self.read_utf()?
-                } else {
-                    String::new()
-                })
+            Err(e) => {
+                self.pool.truncate(pool_len);
+                Err(grammar::into_abx_error(e))
             }
-            CMD_COMMENT => Event::Comment(if type_nibble == TYPE_STRING {
-                self.read_utf()?
-            } else {
-                String::new()
-            }),
-            CMD_DOCDECL => Event::DocDecl(if type_nibble == TYPE_STRING {
-                self.read_utf()?
-            } else {
-                String::new()
-            }),
-
-            other => return Err(AbxError::UnknownCommand(other)),
-        };
-
-        Ok(Some(event))
+        }
     }
 
     /// Reads all remaining events into a `Vec`.

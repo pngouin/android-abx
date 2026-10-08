@@ -3,7 +3,7 @@ name = "android-abx"
 version = "0.3.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Android Binary XML (ABX) parser using nom"
+description = "Android Binary XML (ABX) parser using winnow"
 license = "MIT"
 repository = "https://github.com/pngouin/android-abx"
 homepage = "https://github.com/pngouin/android-abx"
@@ -17,13 +17,13 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-nom = "8"
 base64 = "0.23"
 faster-hex = "0.10"
 thiserror = "2"
 serde = { version = "1", optional = true }
 smol_str = "0.3"
 quick-xml = { version = "0.41.0", optional = true }
+winnow = "1.0.4"
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }

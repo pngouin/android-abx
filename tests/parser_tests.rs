@@ -774,3 +774,89 @@ fn stream_tiny_read_chunks() {
         panic!("expected StartTag, got {:?}", ev);
     }
 }
+
+fn drain_slice(data: &[u8]) -> (Vec<Event>, Option<String>) {
+    let mut p = AbxParser::new(data).unwrap();
+    let mut out = Vec::new();
+    loop {
+        match p.next_event() {
+            Ok(Some(ev)) => out.push(ev),
+            Ok(None) => return (out, None),
+            Err(e) => return (out, Some(e.to_string())),
+        }
+    }
+}
+
+fn drain_stream(reader: impl Read) -> (Vec<Event>, Option<String>) {
+    let mut p = AbxStreamParser::new(reader).unwrap();
+    let mut out = Vec::new();
+    loop {
+        match p.next_event() {
+            Ok(Some(ev)) => out.push(ev),
+            Ok(None) => return (out, None),
+            Err(e) => return (out, Some(e.to_string())),
+        }
+    }
+}
+
+struct ChunkReader<'a>(&'a [u8], usize);
+impl Read for ChunkReader<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.1.min(buf.len()).min(self.0.len());
+        buf[..n].copy_from_slice(&self.0[..n]);
+        self.0 = &self.0[n..];
+        Ok(n)
+    }
+}
+
+#[test]
+fn slice_and_stream_agree_on_every_truncation() {
+    let long = "x".repeat(4500);
+    let synthetic = document(&[
+        start_tag("root"),
+        attr_string("big", &long),
+        attr_bytes_hex("blob", &[0xAB; 4200]),
+        attr_long("l", -7),
+        text(&long),
+        end_tag("root"),
+    ]);
+    let docs: [&[u8]; 7] = [
+        include_bytes!("fixtures/aosp_verify.abx"),
+        include_bytes!("fixtures/booleans.abx"),
+        include_bytes!("fixtures/nested_permissions.abx"),
+        include_bytes!("fixtures/repeated_strings.abx"),
+        include_bytes!("fixtures/simple_pkg.abx"),
+        include_bytes!("fixtures/special_chars.abx"),
+        &synthetic,
+    ];
+    for doc in docs {
+        for end in 4..=doc.len() {
+            let data = &doc[..end];
+            let expected = drain_slice(data);
+            for chunk in [1, 3, 4096] {
+                assert_eq!(
+                    drain_stream(ChunkReader(data, chunk)),
+                    expected,
+                    "len {end}, chunk {chunk}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn truncation_errors_name_what_was_being_read() {
+    let doc = document(&[start_tag("root"), attr_string("a", "hello")]);
+    let cut_payload = &doc[..doc.len() - 2];
+    let (_, err) = drain_slice(cut_payload);
+    assert_eq!(
+        err.as_deref(),
+        Some("unexpected end of input while reading UTF string payload")
+    );
+    let cut_len = &doc[..doc.len() - 7];
+    let (_, err) = drain_stream(ChunkReader(cut_len, 1));
+    assert_eq!(
+        err.as_deref(),
+        Some("unexpected end of input while reading primitive")
+    );
+}
