@@ -51,8 +51,8 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// # Errors
     ///
-    /// Returns [`AbxError::Io`] if reading fails, [`AbxError::UnexpectedEof`] if
-    /// the input is shorter than 4 bytes, or [`AbxError::InvalidMagic`] if it does
+    /// Returns [`AbxError::Io`](crate::AbxError::Io) if reading fails, [`AbxError::UnexpectedEof`](crate::AbxError::UnexpectedEof) if
+    /// the input is shorter than 4 bytes, or [`AbxError::InvalidMagic`](crate::AbxError::InvalidMagic) if it does
     /// not start with [`MAGIC`](crate::MAGIC).
     pub fn new(reader: R) -> Result<Self> {
         let mut p = AbxStreamParser {
@@ -112,7 +112,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     /// On error, the parser is left at the start of the failing event.
     pub fn next_event(&mut self) -> Result<Option<Event>> {
         self.ensure(1)?;
@@ -160,7 +160,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     pub fn collect_events(&mut self) -> Result<Vec<Event>> {
         let mut out = Vec::new();
         while let Some(ev) = self.next_event()? {
@@ -178,7 +178,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     ///
     /// # Examples
     ///
@@ -213,7 +213,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     pub fn find_all_attributes(
         &mut self,
         element: &str,
@@ -244,7 +244,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     pub fn attributes_of(&mut self, element: &str) -> Result<Option<Vec<Attribute>>> {
         loop {
             match self.next_event()? {
@@ -265,7 +265,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     pub fn all_attributes_of(&mut self, element: &str) -> Result<Vec<Vec<Attribute>>> {
         let mut out = Vec::new();
         while let Some(ev) = self.next_event()? {
@@ -288,7 +288,7 @@ impl<R: Read> AbxStreamParser<R> {
     /// # Errors
     ///
     /// Returns a parse error if the input is malformed, or
-    /// [`AbxError::Deserialization`](crate::AbxError::Deserialization) if the element
+    /// [`AbxError::Deserialization`](crate::AbxError::Deserialization)(crate::AbxError::Deserialization) if the element
     /// does not match `T`.
     ///
     /// # Examples
@@ -388,7 +388,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     ///
     /// # Examples
     ///
@@ -420,7 +420,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading or writing fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io)(crate::AbxError::Io) if reading or writing fails.
     pub fn write_xml(&mut self, writer: &mut impl std::io::Write) -> Result<()> {
         writer.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
         let mut tmp = String::new();
@@ -444,7 +444,7 @@ impl<R: Read> AbxStreamParser<R> {
     ///
     /// Returns an error if the input is truncated or malformed (unknown token,
     /// invalid interned-string index, invalid UTF-8).
-    /// Also returns [`AbxError::Io`] if reading fails.
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading fails.
     pub fn into_map(mut self) -> Result<HashMap<String, Vec<HashMap<String, String>>>> {
         let mut map: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
         while let Some(ev) = self.next_event()? {
