@@ -1,14 +1,10 @@
-//! Wire-format protocol constants (mirrors AOSP's `BinaryXmlSerializer.java`
-//! exactly — see `CLAUDE.md`'s "FIXED" section for how the `TYPE_*` values
-//! were verified). Shared by both parsers (`src/parser.rs`, `src/stream.rs`).
+//! Wire-format constants, byte-exact with AOSP `BinaryXmlSerializer.java`.
 
-/// Magic header bytes: `ABX\0`
+/// The 4-byte header that starts every ABX document: `ABX\0`.
 pub const MAGIC: [u8; 4] = [0x41, 0x42, 0x58, 0x00];
 
-/// Sentinel in the interned-string index that signals a new string.
 pub(crate) const INTERNED_NEW: u16 = 0xFFFF;
 
-// Token command (low nibble)
 pub(crate) const CMD_START_DOCUMENT: u8 = 0x00;
 pub(crate) const CMD_END_DOCUMENT: u8 = 0x01;
 pub(crate) const CMD_START_TAG: u8 = 0x02;
@@ -22,10 +18,6 @@ pub(crate) const CMD_COMMENT: u8 = 0x09;
 pub(crate) const CMD_DOCDECL: u8 = 0x0A;
 pub(crate) const CMD_ATTRIBUTE: u8 = 0x0F;
 
-// Data type (high nibble). Values match AOSP's BinaryXmlSerializer.java
-// exactly: `n << 4` for n = 1..=13 (high-nibble 0x00 is never used on the
-// wire — every token always OR's in an explicit type flag, even the
-// "absent value" case, TYPE_NULL).
 pub(crate) const TYPE_NULL: u8 = 0x10;
 pub(crate) const TYPE_STRING: u8 = 0x20;
 pub(crate) const TYPE_STRING_INTERNED: u8 = 0x30;

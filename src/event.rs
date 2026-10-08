@@ -1,13 +1,6 @@
-//! The shared event/data model — [`Event`], [`Attribute`], [`AttributeValue`],
-//! [`InternedStr`] — and the XML-rendering logic built on them.
-//! `to_xml`/`write_xml` on both parsers call into [`render_event`].
-
 use base64::Engine as _;
 
-/// Renders a hex-typed attribute value like AOSP's `Integer.toString(v, 16)`/
-/// `Long.toString(v, 16)`: `v` is signed, so a negative value renders as
-/// `-` + hex(magnitude), not the raw bit pattern (e.g. `0xCAFEBABE` is
-/// `"-35014542"`, not `"cafebabe"`).
+// Signed, like Java's `Integer.toString(v, 16)`: 0xCAFEBABE -> "-35014542".
 fn format_signed_hex(v: i64) -> String {
     if v < 0 {
         format!("-{:x}", v.unsigned_abs())
@@ -16,38 +9,69 @@ fn format_signed_hex(v: i64) -> String {
     }
 }
 
-/// The typed payload of an XML attribute.
+/// A typed attribute value.
+///
+/// Each variant is one of the value types of the wire format. Use
+/// [`as_str`](Self::as_str) to render any variant as text, or a typed accessor
+/// such as [`as_int`](Self::as_int) to read a specific one.
+///
+/// # Examples
+///
+/// ```
+/// use android_abx::AttributeValue;
+///
+/// let value = AttributeValue::Int(42);
+/// assert_eq!(value.as_int(), Some(42));
+/// assert_eq!(value.as_bool(), None);
+/// assert_eq!(value.as_str(), "42");
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum AttributeValue {
-    /// No value (AOSP's `TYPE_NULL`).
+    /// No value.
     Null,
-    /// A plain UTF-8 string.
+    /// A string.
     String(String),
-    /// Bytes whose canonical text form is lowercase hex.
+    /// Bytes, rendered as lowercase hex.
     BytesHex(Vec<u8>),
-    /// Bytes whose canonical text form is Base64.
+    /// Bytes, rendered as Base64.
     BytesBase64(Vec<u8>),
-    /// A 32-bit signed integer, rendered in decimal.
+    /// A 32-bit integer, rendered in decimal.
     Int(i32),
-    /// A 32-bit value rendered in hex — see [`AttributeValue::as_str`] for
-    /// the signed-magnitude rendering rule this follows.
+    /// A 32-bit integer, rendered in signed hex.
     IntHex(u32),
-    /// A 64-bit signed integer, rendered in decimal.
+    /// A 64-bit integer, rendered in decimal.
     Long(i64),
-    /// A 64-bit value rendered in hex — see [`AttributeValue::as_str`] for
-    /// the signed-magnitude rendering rule this follows.
+    /// A 64-bit integer, rendered in signed hex.
     LongHex(u64),
-    /// A 32-bit floating-point value.
+    /// A 32-bit float.
     Float(f32),
-    /// A 64-bit floating-point value.
+    /// A 64-bit float.
     Double(f64),
-    /// A boolean, rendered as `"true"`/`"false"`.
+    /// A boolean.
     Boolean(bool),
 }
 
 impl AttributeValue {
-    /// Render the value as a human-readable string, mirroring the original
-    /// Java serializer's output.
+    /// Renders the value as text, the same way AOSP's `BinaryXmlPullParser` does.
+    ///
+    /// - `Null` is the empty string.
+    /// - Bytes are lowercase hex or standard Base64.
+    /// - `IntHex` and `LongHex` are signed, like Java's `Integer.toString(v, 16)`:
+    ///   `0xCAFEBABE` renders as `-35014542`.
+    /// - Whole `Float` and `Double` values keep a `.0` suffix.
+    ///
+    /// The result is not XML-escaped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use android_abx::AttributeValue;
+    ///
+    /// assert_eq!(AttributeValue::IntHex(0xff).as_str(), "ff");
+    /// assert_eq!(AttributeValue::IntHex(0xCAFEBABE).as_str(), "-35014542");
+    /// assert_eq!(AttributeValue::Double(1.0).as_str(), "1.0");
+    /// assert_eq!(AttributeValue::BytesHex(vec![0xab, 0x01]).as_str(), "ab01");
+    /// ```
     pub fn as_str(&self) -> std::borrow::Cow<'_, str> {
         use std::borrow::Cow;
         match self {
@@ -85,7 +109,7 @@ impl AttributeValue {
         }
     }
 
-    /// Returns the inner string if this is [`AttributeValue::String`], else `None`.
+    /// Returns the string if this is [`String`](Self::String), otherwise `None`.
     pub fn as_string(&self) -> Option<&str> {
         if let AttributeValue::String(s) = self {
             Some(s)
@@ -93,7 +117,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::Int`], else `None`.
+    /// Returns the value if this is [`Int`](Self::Int), otherwise `None`.
     pub fn as_int(&self) -> Option<i32> {
         if let AttributeValue::Int(v) = self {
             Some(*v)
@@ -101,7 +125,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::IntHex`], else `None`.
+    /// Returns the value if this is [`IntHex`](Self::IntHex), otherwise `None`.
     pub fn as_int_hex(&self) -> Option<u32> {
         if let AttributeValue::IntHex(v) = self {
             Some(*v)
@@ -109,7 +133,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::Long`], else `None`.
+    /// Returns the value if this is [`Long`](Self::Long), otherwise `None`.
     pub fn as_long(&self) -> Option<i64> {
         if let AttributeValue::Long(v) = self {
             Some(*v)
@@ -117,7 +141,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::LongHex`], else `None`.
+    /// Returns the value if this is [`LongHex`](Self::LongHex), otherwise `None`.
     pub fn as_long_hex(&self) -> Option<u64> {
         if let AttributeValue::LongHex(v) = self {
             Some(*v)
@@ -125,7 +149,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::Float`], else `None`.
+    /// Returns the value if this is [`Float`](Self::Float), otherwise `None`.
     pub fn as_float(&self) -> Option<f32> {
         if let AttributeValue::Float(v) = self {
             Some(*v)
@@ -133,7 +157,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::Double`], else `None`.
+    /// Returns the value if this is [`Double`](Self::Double), otherwise `None`.
     pub fn as_double(&self) -> Option<f64> {
         if let AttributeValue::Double(v) = self {
             Some(*v)
@@ -141,7 +165,7 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner value if this is [`AttributeValue::Boolean`], else `None`.
+    /// Returns the value if this is [`Boolean`](Self::Boolean), otherwise `None`.
     pub fn as_bool(&self) -> Option<bool> {
         if let AttributeValue::Boolean(b) = self {
             Some(*b)
@@ -149,8 +173,8 @@ impl AttributeValue {
             None
         }
     }
-    /// Returns the inner bytes if this is [`AttributeValue::BytesHex`] or
-    /// [`AttributeValue::BytesBase64`], else `None`.
+    /// Returns the bytes if this is [`BytesHex`](Self::BytesHex) or
+    /// [`BytesBase64`](Self::BytesBase64), otherwise `None`.
     pub fn as_bytes(&self) -> Option<&[u8]> {
         match self {
             AttributeValue::BytesHex(b) | AttributeValue::BytesBase64(b) => Some(b),
@@ -159,69 +183,63 @@ impl AttributeValue {
     }
 }
 
-/// A tag or attribute name read from the wire format's interned-string
-/// pool. The same handful of names (`pkg`, `name`, `version`, ...) repeat
-/// across every element in a typical document, so back-reference clones
-/// need to be cheap.
+/// A tag or attribute name.
 ///
-/// `InternedStr` is [`smol_str::SmolStr`]: strings up to 23 bytes are
-/// stored inline (clone is a stack copy), longer ones fall back to a
-/// reference-counted `Arc<str>` (clone is a refcount bump) — either way, no
-/// allocation on clone.
+/// An alias of [`SmolStr`](smol_str::SmolStr): names up to 23 bytes are stored
+/// inline, and cloning never allocates.
 pub type InternedStr = smol_str::SmolStr;
 
-/// One XML attribute: a name plus its typed value.
+/// An attribute: a name and a typed value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
-    /// The attribute's name.
+    /// The attribute name.
     pub name: InternedStr,
-    /// The attribute's typed value.
+    /// The attribute value.
     pub value: AttributeValue,
 }
 
 impl Attribute {
-    /// Render [`Attribute::value`] as a human-readable string; see
-    /// [`AttributeValue::as_str`].
+    /// Renders the value as text. See [`AttributeValue::as_str`].
     pub fn as_str(&self) -> std::borrow::Cow<'_, str> {
         self.value.as_str()
     }
 }
 
-/// One `XmlPullParser`-style parse event, as read from (or written to) an
-/// ABX stream.
+/// A parse event, one per token in the document.
+///
+/// The parsers produce events, and [`AbxWriter`](crate::AbxWriter) encodes them.
+/// The variants follow the token types of Java's `XmlPullParser`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
-    /// The start of the document — always the first event.
+    /// Start of the document.
     StartDocument,
-    /// The end of the document — always the last event.
+    /// End of the document.
     EndDocument,
-    /// The opening tag of an element, with its attributes.
+    /// An opening tag with its attributes.
     StartTag {
         /// The element's tag name.
         name: InternedStr,
-        /// The element's attributes, in document order.
+        /// Attributes in document order.
         attributes: Vec<Attribute>,
     },
-    /// The closing tag of an element.
+    /// A closing tag.
     EndTag {
         /// The element's tag name, matching the corresponding [`Event::StartTag`].
         name: InternedStr,
     },
-    /// Plain character data between tags.
+    /// Character data, not escaped.
     Text(String),
-    /// A `<![CDATA[...]]>` section's raw content.
+    /// The content of a `<![CDATA[...]]>` section.
     CdataSection(String),
-    /// A `<!--...-->` comment's raw content.
+    /// The content of a `<!--...-->` comment.
     Comment(String),
-    /// A `<?...?>` processing instruction's raw content.
+    /// The content of a `<?...?>` processing instruction.
     ProcessingInstruction(String),
-    /// An entity reference's raw name (e.g. `"amp"` for `&amp;`), not the
-    /// resolved character — see the crate docs for why.
+    /// An entity reference by name: `"amp"` for `&amp;`, not the resolved `&`.
     EntityReference(String),
-    /// Whitespace-only character data that a validating parser would treat
-    /// as ignorable.
+    /// Whitespace marked as ignorable.
     IgnorableWhitespace(String),
-    /// A `<!DOCTYPE ...>` declaration's raw content.
+    /// The content of a `<!DOCTYPE ...>` declaration.
     DocDecl(String),
 }
 
@@ -246,10 +264,6 @@ pub(crate) fn xml_escape(s: &str) -> std::borrow::Cow<'_, str> {
     }
 }
 
-/// Write `value`'s XML-attribute text form directly into `buf`, without
-/// allocating an intermediate `String`. Numeric/bool/bytes output can never
-/// contain an XML-special character, so those variants also skip the
-/// escaping scan entirely.
 fn push_attr_value(buf: &mut String, value: &AttributeValue) {
     use std::fmt::Write as _;
     match value {
@@ -289,7 +303,6 @@ fn push_attr_value(buf: &mut String, value: &AttributeValue) {
     }
 }
 
-/// Shared render-to-XML logic used by both parsers.
 pub(crate) fn render_event(ev: &Event, buf: &mut String) {
     match ev {
         Event::StartDocument | Event::EndDocument => {}

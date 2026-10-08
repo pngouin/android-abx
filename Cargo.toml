@@ -14,6 +14,7 @@ exclude = ["tests/fixtures/aosp_verify/", "cliff.toml"]
 
 [package.metadata.docs.rs]
 all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 nom = "8"
@@ -35,9 +36,12 @@ xml = ["dep:quick-xml"]
 
 [lints.rust]
 unsafe_code = "forbid"
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(docsrs)"] }
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
 
 [[example]]
 name = "abx2xml"

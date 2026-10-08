@@ -1,7 +1,3 @@
-//! [`ValueDeserializer`]/[`FieldValue`]: turns a single attribute, the text
-//! content, or a group of same-named child elements — one value out of
-//! [`super::element::ElementMapAccess`] — into a `serde` value.
-
 use serde::de::{self, DeserializeSeed, Deserializer, SeqAccess, Visitor};
 
 use crate::{AbxError, AttributeValue, Result};
@@ -9,12 +5,7 @@ use crate::{AbxError, AttributeValue, Result};
 use super::element::ElementDeserializer;
 use super::traversal::ElementData;
 
-/// Generates `Deserializer` methods that try `FromStr` on the two textual
-/// sources (`Text`, a `String`-typed attribute) before falling back to
-/// `deserialize_any`. Already-typed `AttributeValue`s skip straight to
-/// `deserialize_any`'s exact visit call. A `Children` group forwards to the
-/// same named method on the first child's `ElementDeserializer`, so its
-/// target-type information isn't lost on the way down.
+// Parse string values with `FromStr`; forward children to the same method.
 macro_rules! scalar_from_text_or_children {
     ($($method:ident => $visit:ident : $ty:ty),+ $(,)?) => {
         $(
@@ -70,19 +61,12 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
                 AttributeValue::Double(f) => visitor.visit_f64(*f),
                 AttributeValue::Boolean(b) => visitor.visit_bool(*b),
             },
-            // A singular (non-Vec) target field: use the first matching
-            // child, delegating to ElementDeserializer's own leaf-or-struct
-            // logic (so a text-only child still collapses to a scalar).
             FieldValue::Children(items) => {
                 ElementDeserializer::from_data(items[0]).deserialize_any(visitor)
             }
         }
     }
 
-    /// Attributes present with a `Null` value deserialize as `None`;
-    /// everything else (including a missing attribute/child, handled
-    /// upstream by serde's own "absent key => None" behavior for
-    /// `Option<T>` fields) as `Some`.
     fn deserialize_option<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
         if matches!(&self.0, FieldValue::Attr(AttributeValue::Null)) {
             visitor.visit_none()
@@ -91,8 +75,6 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
         }
     }
 
-    /// `Vec<u8>` from `BytesHex`/`BytesBase64`, or a `Vec<T>` field from all
-    /// same-named child elements (each recursively deserialized).
     fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
         match &self.0 {
             FieldValue::Attr(AttributeValue::BytesHex(b) | AttributeValue::BytesBase64(b)) => {
@@ -107,12 +89,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
         self.deserialize_any(visitor)
     }
 
-    /// Unit-variant enums, selected by matching a string value (attribute or
-    /// `$text`) against a variant name — mirrors quick-xml's rule that
-    /// "variant names become element or attribute names". Non-string values
-    /// fall through to [`deserialize_any`](Self::deserialize_any), which
-    /// reports a clear type-mismatch error (enum variants carrying data
-    /// aren't supported, same as quick-xml's derive-based deserialization).
+    // Unit variants only, matched by name.
     fn deserialize_enum<V: Visitor<'de>>(
         self,
         _name: &'static str,
@@ -154,8 +131,6 @@ impl<'de> Deserializer<'de> for ValueDeserializer<'de> {
     }
 }
 
-/// Yields each child in a same-named group, recursively deserialized —
-/// backs a `Vec<T>` field.
 struct ChildSeqAccess<'a, 'de> {
     iter: std::slice::Iter<'a, &'de ElementData>,
 }

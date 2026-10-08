@@ -1,7 +1,3 @@
-//! Walks the event stream: finds a matching (or the root) element, then
-//! recursively collects its attributes/text/children into an [`ElementData`]
-//! tree ready for [`super::element::ElementDeserializer`].
-
 use std::io::Read;
 
 use serde::de::DeserializeOwned;
@@ -26,11 +22,6 @@ impl<R: Read> EventSource for AbxStreamParser<R> {
     }
 }
 
-/// Advance to the next `<element>` in the stream (skipping everything else,
-/// same as [`crate::AbxParser::attributes_of`]), consume its body up to and
-/// including its matching end tag — recursively collecting child elements —
-/// and deserialize the resulting attribute/child/text tree into `T`.
-/// `Ok(None)` at end of document.
 pub(crate) fn find_and_consume_element<S, T>(source: &mut S, element: &str) -> Result<Option<T>>
 where
     S: EventSource,
@@ -47,11 +38,6 @@ where
     }
 }
 
-/// Advance to the document's root element — whichever tag it is, unlike
-/// [`find_and_consume_element`] this doesn't filter by name, matching
-/// quick-xml's `from_str`/serde_json's `from_slice`: deserialization is
-/// structural, so the root's tag name is never checked against `T`. Errors
-/// if the document has no element at all.
 pub(crate) fn find_and_consume_root_element<S, T>(source: &mut S) -> Result<T>
 where
     S: EventSource,
@@ -72,8 +58,6 @@ where
     }
 }
 
-/// Shared by both traversal functions above: given a `StartTag`'s already-read
-/// attributes, consume the rest of its body and deserialize the result.
 fn deserialize_started_element<S, T>(source: &mut S, attributes: Vec<Attribute>) -> Result<T>
 where
     S: EventSource,
@@ -88,9 +72,6 @@ where
     T::deserialize(de)
 }
 
-/// A child element's own attributes/text/children, fully collected — the
-/// recursive counterpart to the flat `(attributes, text)` pair
-/// [`super::from_element`] takes directly.
 pub(crate) struct ElementData {
     pub(crate) attributes: Vec<Attribute>,
     pub(crate) text: Option<String>,
@@ -99,10 +80,7 @@ pub(crate) struct ElementData {
 
 pub(crate) type ChildList = Vec<(InternedStr, ElementData)>;
 
-/// Consume events up to (and including) the end tag that closes the element
-/// whose start tag was just read: direct-child `Text` content is
-/// accumulated, and each nested `StartTag` is recursively collected in full
-/// (its own attributes, text, and children) rather than being skipped.
+/// Consume up to the matching end tag, collecting text and children.
 fn read_element_body<S: EventSource>(source: &mut S) -> Result<(Option<String>, ChildList)> {
     let mut text = String::new();
     let mut has_text = false;
@@ -120,10 +98,7 @@ fn read_element_body<S: EventSource>(source: &mut S) -> Result<(Option<String>, 
                     },
                 ));
             }
-            // Doesn't check the end tag's name against the element being
-            // closed: real AOSP's own BinaryXmlPullParser.nextToken() reads
-            // an END_TAG's name into mCurrentName with no stack or
-            // validation either, so this is parity, not a gap.
+            // Name not checked, same as AOSP BinaryXmlPullParser.
             Some(Event::EndTag { .. }) => break,
             Some(Event::Text(t)) => {
                 has_text = true;

@@ -1,6 +1,3 @@
-//! [`AbxWriter`] — encodes [`Event`]s to the ABX wire format, the mechanical
-//! reverse of [`crate::AbxParser`]/[`crate::AbxStreamParser`]'s decoding.
-
 use std::collections::HashMap;
 use std::io::Write;
 
@@ -16,24 +13,12 @@ use crate::{
     TYPE_STRING, TYPE_STRING_INTERNED,
 };
 
-/// Tracks tag/attribute names already written, so repeats become a `u16`
-/// back-reference instead of a fresh string. Covers names only, never
-/// attribute values — matches AOSP's `attribute()`, which never
-/// auto-interns a value.
-///
-/// Below `LINEAR_SCAN_LIMIT` unique names, scans `names` linearly instead
-/// of hashing — real documents repeat a small, bounded vocabulary of
-/// names, so scanning a short `Vec` beats hash overhead. A linear scan is
-/// O(n²) in the number of unique names though, so past the limit this
-/// switches to a `HashMap`.
+// Linear scan below this many names, `HashMap` above.
 const LINEAR_SCAN_LIMIT: usize = 32;
 
-/// Largest length a `u16` wire length-prefix can express. Matches AOSP's
-/// `FastDataOutput.MAX_UNSIGNED_SHORT` — `writeUTF()` throws past this, and
-/// `BinaryXmlSerializer.attributeBytesHex`/`attributeBytesBase64` check it
-/// explicitly before writing anything.
 const MAX_UNSIGNED_SHORT: usize = 65_535;
 
+/// Interns tag/attribute names only, never values (AOSP `attribute()`).
 struct InternedPool {
     names: Vec<InternedStr>,
     index: Option<HashMap<InternedStr, u16>>,
@@ -61,10 +46,7 @@ impl InternedPool {
             out.write_all(&INTERNED_NEW.to_be_bytes())?;
             write_utf(out, s)?;
 
-            // 0xFFFF is the INTERNED_NEW sentinel, so indices only go up
-            // to 0xFFFE -- past that, stop caching. Matches real AOSP,
-            // which also keeps working past its cap instead of erroring;
-            // only uncached names lose the back-reference.
+            // Past 0xFFFE entries, stop caching (AOSP `writeInternedUTF`).
             if self.names.len() < INTERNED_NEW as usize {
                 let idx = self.names.len() as u16;
                 self.names.push(s.clone());
@@ -79,11 +61,6 @@ impl InternedPool {
     }
 }
 
-/// Errors (rather than truncating the `u16` length prefix, which would
-/// silently corrupt the stream for anything written after) when `bytes` is
-/// longer than a `u16` length can express — same boundary and same
-/// reject-don't-truncate behavior as AOSP's `writeUTF()`/
-/// `attributeBytesHex`/`attributeBytesBase64` length checks.
 fn write_bytes_blob(out: &mut impl Write, bytes: &[u8]) -> Result<()> {
     if bytes.len() > MAX_UNSIGNED_SHORT {
         return Err(AbxError::ValueTooLong {
@@ -96,22 +73,50 @@ fn write_bytes_blob(out: &mut impl Write, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// See [`write_bytes_blob`] — same overflow check, for a UTF-8 string.
 fn write_utf(out: &mut impl Write, s: &str) -> Result<()> {
     write_bytes_blob(out, s.as_bytes())
 }
 
-/// Encodes [`Event`]s to any `W: Write` sink. `Vec<u8>` covers the
-/// in-memory case (it implements `Write`); a file/socket/`BufWriter` covers
-/// streaming — unlike the decode side, writing has no ring-buffer/refill
-/// complexity to split across two types.
+/// Encodes [`Event`]s as ABX to any [`Write`] sink.
+///
+/// Tag and attribute names are interned, attribute values are not. Events are
+/// written as given: the writer does not check that tags are balanced. Writes
+/// are small and frequent, so wrap files and sockets in a
+/// [`BufWriter`](std::io::BufWriter).
+///
+/// # Examples
+///
+/// ```
+/// use android_abx::{AbxParser, AbxWriter, Attribute, AttributeValue, Event};
+///
+/// let mut writer = AbxWriter::new(Vec::new())?;
+/// writer.write_event(&Event::StartDocument)?;
+/// writer.write_event(&Event::StartTag {
+///     name: "pkg".into(),
+///     attributes: vec![Attribute {
+///         name: "version".into(),
+///         value: AttributeValue::Int(3),
+///     }],
+/// })?;
+/// writer.write_event(&Event::EndTag { name: "pkg".into() })?;
+/// writer.write_event(&Event::EndDocument)?;
+/// let data = writer.into_inner();
+///
+/// let xml = AbxParser::new(&data)?.to_xml()?;
+/// assert!(xml.ends_with(r#"<pkg version="3"></pkg>"#));
+/// # Ok::<(), android_abx::AbxError>(())
+/// ```
 pub struct AbxWriter<W: Write> {
     writer: W,
     pool: InternedPool,
 }
 
 impl<W: Write> AbxWriter<W> {
-    /// Create a writer, writing the 4-byte magic header immediately.
+    /// Creates a writer and writes the header.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AbxError::Io`] if writing fails.
     pub fn new(mut writer: W) -> Result<Self> {
         writer.write_all(&MAGIC)?;
         Ok(AbxWriter {
@@ -120,7 +125,13 @@ impl<W: Write> AbxWriter<W> {
         })
     }
 
-    /// Encode and write a single [`Event`].
+    /// Encodes and writes one event.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AbxError::ValueTooLong`] if a string or byte value is longer than
+    /// 65,535 bytes, or [`AbxError::Io`] if writing fails. After an error, the output
+    /// is incomplete and should be discarded.
     pub fn write_event(&mut self, ev: &Event) -> Result<()> {
         match ev {
             Event::StartDocument => self.writer.write_all(&[CMD_START_DOCUMENT | TYPE_NULL])?,
@@ -151,21 +162,13 @@ impl<W: Write> AbxWriter<W> {
         Ok(())
     }
 
-    /// Shared shape for the seven text-bearing events: always `TYPE_STRING`
-    /// plus length-prefixed UTF-8, even for an empty string. Never
-    /// `TYPE_NULL` — real AOSP's own parser can't correctly read that form
-    /// back (a confirmed bug: it calls `readUTF()` unconditionally here,
-    /// unlike the `ATTRIBUTE` branch), so `TYPE_STRING` with an empty
-    /// payload is the only safe choice.
+    // Always TYPE_STRING: AOSP's parser misreads TYPE_NULL text tokens.
     fn write_text_token(&mut self, cmd: u8, s: &str) -> Result<()> {
         self.writer.write_all(&[TYPE_STRING | cmd])?;
         write_utf(&mut self.writer, s)?;
         Ok(())
     }
 
-    /// Write one attribute: `type_nibble|CMD_ATTRIBUTE` + interned name +
-    /// the value's payload. `String` values are never interned — matches
-    /// AOSP's `attribute()`, which only interns the name.
     fn write_attribute(&mut self, attr: &Attribute) -> Result<()> {
         let type_nibble = match &attr.value {
             AttributeValue::Null => TYPE_NULL,
@@ -199,7 +202,7 @@ impl<W: Write> AbxWriter<W> {
         Ok(())
     }
 
-    /// Unwrap the underlying writer.
+    /// Returns the underlying writer, without flushing it.
     pub fn into_inner(self) -> W {
         self.writer
     }

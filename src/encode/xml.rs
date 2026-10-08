@@ -1,17 +1,3 @@
-//! [`xml_to_abx`] — parses plain XML text with `quick-xml`'s `Reader` (not
-//! `NsReader` — no namespace concept, `foo:bar` stays an opaque name) and
-//! re-encodes it as ABX bytes via [`AbxWriter`].
-//!
-//! UTF-8 input only. Attribute values always become
-//! `AttributeValue::String` — no int/bool inference, matching AOSP's own
-//! `attribute()`. The `<?xml ...?>` prolog is consumed, not emitted;
-//! `StartDocument`/`EndDocument` are synthesized as bookends instead.
-//!
-//! `quick-xml` splits `&ref;`/`&#N;` references out of text as their own
-//! `GeneralRef` event rather than inlining them — maps directly onto
-//! `Event::EntityReference`. `IgnorableWhitespace` is never produced:
-//! whitespace-only runs are preserved literally as `Text`.
-
 use quick_xml::XmlVersion;
 use quick_xml::events::{BytesStart, Event as XmlEvent};
 use quick_xml::reader::Reader;
@@ -43,7 +29,32 @@ fn start_tag_attributes(start: &BytesStart) -> Result<Vec<Attribute>> {
     Ok(attributes)
 }
 
-/// Encode XML text to ABX bytes.
+/// Encodes XML text as ABX bytes.
+///
+/// - Every attribute value is written as [`AttributeValue::String`]: no type is
+///   inferred, so `version="3"` stays a string.
+/// - The `<?xml ...?>` declaration is dropped, and
+///   [`StartDocument`](Event::StartDocument)/[`EndDocument`](Event::EndDocument)
+///   are added.
+/// - Entity references in text become [`Event::EntityReference`]; in attribute
+///   values they are decoded.
+/// - Namespaces are not processed: `android:name` is a plain name.
+///
+/// # Errors
+///
+/// Returns [`AbxError::Xml`] if the XML is malformed, or
+/// [`AbxError::ValueTooLong`] if a string is longer than 65,535 bytes.
+///
+/// # Examples
+///
+/// ```
+/// use android_abx::{AbxParser, AttributeValue, xml_to_abx};
+///
+/// let data = xml_to_abx(r#"<pkg name="com.example" version="3"/>"#)?;
+/// let version = AbxParser::new(&data)?.find_attribute("pkg", "version")?;
+/// assert_eq!(version, Some(AttributeValue::String("3".into())));
+/// # Ok::<(), android_abx::AbxError>(())
+/// ```
 pub fn xml_to_abx(xml: &str) -> Result<Vec<u8>> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);

@@ -1,8 +1,3 @@
-//! [`ElementDeserializer`]/[`ElementMapAccess`]: turns one
-//! [`ElementData`](super::traversal::ElementData) — an element's attributes,
-//! children, and text, already collected by `super::traversal` — into a
-//! `serde` map (attribute/child/`$text` name -> value).
-
 use std::collections::HashSet;
 
 use serde::de::{DeserializeSeed, Deserializer, MapAccess, Visitor};
@@ -13,10 +8,7 @@ use super::TEXT_FIELD;
 use super::traversal::ElementData;
 use super::value::{FieldValue, ValueDeserializer};
 
-/// Generates `Deserializer` methods that try `FromStr` on the leaf text
-/// before falling back to `deserialize_any` — element text is always a
-/// plain string on the wire, so this is the one place that has to parse it
-/// itself for numeric/bool/char leaf children to work.
+// Parse leaf text with `FromStr` before falling back to `deserialize_any`.
 macro_rules! scalar_from_leaf_text {
     ($($method:ident => $visit:ident : $ty:ty),+ $(,)?) => {
         $(
@@ -54,9 +46,7 @@ impl<'de> ElementDeserializer<'de> {
 impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
     type Error = AbxError;
 
-    /// A leaf element (no attributes or children — just optional text, or
-    /// nothing) deserializes as a plain scalar via `visit_str`/`visit_unit`;
-    /// anything richer is struct/map shaped.
+    // Leaf element -> scalar, otherwise map.
     fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
         if self.attributes.is_empty() && self.children.is_empty() {
             match self.text {
@@ -69,8 +59,6 @@ impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
     }
 
     fn deserialize_map<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value> {
-        // Skip building the attr-name HashSet for flat/leaf elements, where
-        // grouping is a no-op anyway.
         let children = if self.children.is_empty() {
             Vec::new()
         } else {
@@ -121,8 +109,7 @@ impl<'de> Deserializer<'de> for ElementDeserializer<'de> {
     }
 }
 
-/// Group children by tag name, preserving first-occurrence order, and
-/// dropping any whose name collides with an attribute (attribute wins).
+// Group by name in first-seen order; drop names shadowed by an attribute.
 fn group_children<'de>(
     children: &'de [(InternedStr, ElementData)],
     attr_names: &HashSet<&str>,

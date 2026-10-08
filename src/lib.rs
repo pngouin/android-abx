@@ -1,61 +1,85 @@
-//! # abx — Android Binary XML parser
+//! Parser and encoder for Android Binary XML (ABX).
 //!
-//! Parses the ABX (Android Binary XML) format produced by `BinaryXmlSerializer`
-//! and read back by `BinaryXmlPullParser` in AOSP.
+//! ABX is the binary XML format written by AOSP's `BinaryXmlSerializer` and read
+//! by `BinaryXmlPullParser`. Android uses it for platform files such as
+//! `/data/system/packages.xml`. It is not AXML, the format of compiled APK
+//! resources such as `AndroidManifest.xml`, which this crate cannot read.
 //!
-//! Not to be confused with **AXML**, the unrelated chunk-based binary format
-//! used for compiled resources inside APKs (`AndroidManifest.xml`,
-//! `res/**/*.xml`) — this crate does not read that format. See the crate
-//! README's "Not AXML" section for the comparison.
+//! # Parsing
 //!
-//! ## Two parsers, one format
+//! [`AbxParser`] reads a document from a byte slice and [`AbxStreamParser`] from
+//! any [`Read`](std::io::Read). Both have the same methods and yield the same
+//! [`Event`]s.
 //!
-//! | Parser | Input | When to use |
-//! |---|---|---|
-//! | [`AbxParser`] | `&[u8]` | Data already in memory |
-//! | [`AbxStreamParser`] | `impl Read` | Files, sockets, pipes — any reader |
+//! ```
+//! use android_abx::{AbxParser, Event};
 //!
-//! ## Format overview
-//!
-//! Every file starts with the 4-byte magic `ABX\0` (`0x41 0x42 0x58 0x00`).
-//! After the magic each token is a single byte split into two nibbles:
-//!
-//! ```text
-//! high nibble (0xF0) → data-type  (TYPE_STRING, TYPE_INT, …)
-//! low  nibble (0x0F) → event kind (START_TAG, ATTRIBUTE, …)
+//! # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+//! let mut parser = AbxParser::new(data)?;
+//! while let Some(event) = parser.next_event()? {
+//!     if let Event::StartTag { name, attributes } = event {
+//!         println!("<{name}> has {} attributes", attributes.len());
+//!     }
+//! }
+//! # Ok::<(), android_abx::AbxError>(())
 //! ```
 //!
-//! Interned strings are prefixed with a `u16` index; the sentinel value
-//! `0xFFFF` means "new string follows as a length-prefixed UTF-8 blob".
+//! To convert a whole document to XML text, use [`abx_to_xml`]:
 //!
-//! ## Quick start
-//!
-//! ```rust,ignore
-//! // Slice-based
-//! use android_abx::AbxParser;
-//! let data = std::fs::read("foo.abx")?;
-//! let mut p = AbxParser::new(&data)?;
-//! while let Some(ev) = p.next_event()? { println!("{ev:?}"); }
-//!
-//! // Stream-based (no intermediate Vec)
-//! use android_abx::AbxStreamParser;
-//! let file = std::fs::File::open("foo.abx")?;
-//! let mut p = AbxStreamParser::new(std::io::BufReader::new(file))?;
-//! while let Some(ev) = p.next_event()? { println!("{ev:?}"); }
-//!
-//! // Convenience helper
-//! let mut p = android_abx::open_file("foo.abx")?;
-//! let xml = p.to_xml()?;
+//! ```
+//! # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+//! let xml = android_abx::abx_to_xml(data)?;
+//! assert_eq!(
+//!     xml,
+//!     r#"<?xml version="1.0" encoding="UTF-8"?><pkg name="com.example.chat" version="3" flags="1"></pkg>"#,
+//! );
+//! # Ok::<(), android_abx::AbxError>(())
 //! ```
 //!
-//! ## Crate layout
+//! # Encoding
 //!
-//! `error`, `wire`, `event`, `decode` (in-memory + streaming parsers, see
-//! [`stream`]), and `de` (serde support, behind the `serialize` feature)
-//! are internal modules — everything is re-exported at the crate root, so
-//! `android_abx::Event` etc. work regardless of which file it's defined in.
+//! [`AbxWriter`] and [`events_to_abx`] encode [`Event`]s back to ABX. With the
+//! `xml` feature, `xml_to_abx` encodes XML text.
+//!
+//! ```
+//! use android_abx::{AbxParser, events_to_abx};
+//!
+//! # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+//! let events = AbxParser::new(data)?.collect_events()?;
+//! assert_eq!(events_to_abx(&events)?, data);
+//! # Ok::<(), android_abx::AbxError>(())
+//! ```
+//!
+//! # Deserializing with serde
+//!
+//! With the `serialize` feature, an element can be deserialized into any type
+//! that implements `serde::Deserialize`. Struct fields are filled from:
+//!
+//! - attributes, by name. Use `#[serde(rename = "...")]` for names that are not
+//!   Rust identifiers;
+//! - child elements, by tag name. A `Vec<T>` field takes every matching child,
+//!   any other field takes the first one. A child with only text can fill a
+//!   scalar field such as `String` or `u32`;
+//! - the element's text, through a field renamed to `"$text"`. Only text events
+//!   are collected: entity references such as `&amp;` are dropped.
+//!
+//! When an attribute and a child element have the same name, the attribute is
+//! used. An `Option` field is `None` when the attribute or child is missing, or
+//! when the attribute has a null value. Enums with unit variants are matched by
+//! name against a string value.
+//!
+//! Use `from_slice`, `from_reader` or `from_file` when the root element is the
+//! record you want. For repeated elements under a root, such as `<pkg>` entries
+//! in `packages.xml`, use `AbxParser::deserialize_all` or
+//! `AbxStreamParser::deserialize_iter`.
+//!
+//! # Feature flags
+//!
+//! - `serialize`: serde deserialization.
+//! - `xml`: `xml_to_abx`, to encode XML text.
 
 #![warn(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod error;
 pub use error::{AbxError, Result};
@@ -89,17 +113,65 @@ mod de;
 #[cfg(feature = "serialize")]
 pub use de::{from_element, from_file, from_reader, from_slice};
 
-/// Convert ABX bytes to an XML string.
+/// Converts an ABX document to an XML string.
+///
+/// Shorthand for [`AbxParser::new`] followed by [`AbxParser::to_xml`].
+///
+/// # Errors
+///
+/// Returns an error if the input is truncated or malformed (unknown token,
+/// invalid interned-string index, invalid UTF-8).
+///
+/// # Examples
+///
+/// ```
+/// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+/// let xml = android_abx::abx_to_xml(data)?;
+/// assert!(xml.starts_with(r#"<?xml version="1.0" encoding="UTF-8"?><pkg "#));
+/// # Ok::<(), android_abx::AbxError>(())
+/// ```
 pub fn abx_to_xml(data: &[u8]) -> Result<String> {
     AbxParser::new(data)?.to_xml()
 }
 
-/// Parse ABX bytes and return all events.
+/// Parses an ABX document into a list of events.
+///
+/// Shorthand for [`AbxParser::new`] followed by [`AbxParser::collect_events`].
+///
+/// # Errors
+///
+/// Returns an error if the input is truncated or malformed (unknown token,
+/// invalid interned-string index, invalid UTF-8).
+///
+/// # Examples
+///
+/// ```
+/// use android_abx::Event;
+///
+/// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+/// let events = android_abx::abx_events(data)?;
+/// assert_eq!(events.first(), Some(&Event::StartDocument));
+/// assert_eq!(events.last(), Some(&Event::EndDocument));
+/// # Ok::<(), android_abx::AbxError>(())
+/// ```
 pub fn abx_events(data: &[u8]) -> Result<Vec<Event>> {
     AbxParser::new(data)?.collect_events()
 }
 
-/// Open a file and return a buffered [`AbxStreamParser`] over it.
+/// Opens a file and returns an [`AbxStreamParser`] over it.
+///
+/// # Errors
+///
+/// Returns [`AbxError::Io`] if the file cannot be opened or read, and
+/// [`AbxError::InvalidMagic`] or [`AbxError::UnexpectedEof`] if it does not start
+/// with [`MAGIC`].
+///
+/// # Examples
+///
+/// ```no_run
+/// let xml = android_abx::open_file("/data/system/packages.xml")?.to_xml()?;
+/// # Ok::<(), android_abx::AbxError>(())
+/// ```
 pub fn open_file(
     path: impl AsRef<std::path::Path>,
 ) -> Result<AbxStreamParser<std::io::BufReader<std::fs::File>>> {

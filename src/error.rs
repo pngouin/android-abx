@@ -1,50 +1,47 @@
-//! [`AbxError`] — this crate's single error type — and the [`Result`] alias
-//! built on it.
-
-/// Everything that can go wrong parsing, encoding, or deserializing ABX data.
+/// The error type for every fallible operation in this crate.
 #[derive(Debug, thiserror::Error)]
 pub enum AbxError {
-    /// The 4-byte `ABX\0` magic header didn't match at the start of the input.
+    /// The input does not start with [`MAGIC`](crate::MAGIC).
     #[error("invalid magic header: expected {expected:?}, got {actual:?}")]
     InvalidMagic {
-        /// The magic bytes this crate expects (`ABX\0`).
+        /// Expected magic.
         expected: [u8; 4],
-        /// The bytes actually found at the start of the input.
+        /// Magic found.
         actual: [u8; 4],
     },
-    /// The input ended before a complete token or value could be read.
+    /// The input ended in the middle of a token. The string names what was being read.
     #[error("unexpected end of input while reading {0}")]
     UnexpectedEof(&'static str),
-    /// An interned-string back-reference pointed past the end of the pool.
+    /// An interned-string reference points past the strings read so far.
     #[error("invalid interned string index {0}")]
     BadInternedIndex(u16),
-    /// A string's bytes were not valid UTF-8.
+    /// String is not valid UTF-8.
     #[error("invalid UTF-8 in string")]
     InvalidUtf8,
-    /// An attribute value's type nibble didn't match any known `TYPE_*` constant.
+    /// An attribute has an unknown type nibble.
     #[error("unknown attribute type 0x{0:02X}")]
     UnknownAttributeType(u8),
-    /// A token's command nibble didn't match any known `CMD_*` constant.
+    /// A token has an unknown command nibble.
     #[error("unknown command 0x{0:02X}")]
     UnknownCommand(u8),
-    /// A string or byte blob was too long to fit the wire format's `u16` length prefix.
+    /// A string or byte value is longer than the 65,535 bytes the format allows.
     #[error("value too long: {len} bytes exceeds maximum of {max}")]
     ValueTooLong {
-        /// The value's actual length in bytes.
+        /// Actual length in bytes.
         len: usize,
-        /// The maximum length the wire format can express (`u16::MAX`, 65,535).
+        /// Maximum length (`u16::MAX`).
         max: usize,
     },
-    /// The underlying `nom` parser failed; the message is `nom`'s own formatted error.
+    /// Low-level parse failure.
     #[error("nom parse error: {0}")]
     Nom(String),
-    /// A read or write on the underlying `Read`/`Write` failed.
+    /// Reading or writing failed.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    /// Mapping decoded ABX events onto a `serde` type failed (`serialize` feature).
+    /// Deserializing into a serde type failed.
     #[error("deserialization error: {0}")]
     Deserialization(String),
-    /// Parsing XML text failed while encoding it to ABX (`xml` feature).
+    /// The XML text passed to `xml_to_abx` is malformed.
     #[error("XML parse error: {0}")]
     Xml(String),
 }
@@ -55,5 +52,5 @@ impl<I: std::fmt::Debug> From<nom::Err<nom::error::Error<I>>> for AbxError {
     }
 }
 
-/// This crate's [`Result`](std::result::Result) alias, with [`AbxError`] as the error type.
+/// A [`Result`](std::result::Result) with [`AbxError`] as the error type.
 pub type Result<T> = std::result::Result<T, AbxError>;

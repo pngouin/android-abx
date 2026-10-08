@@ -1,24 +1,4 @@
-//! [`AbxStreamParser`] — pull parser over any `Read` source.
-//!
-//! Unlike [`crate::AbxParser`] which requires the whole document in memory,
-//! `AbxStreamParser` reads from any `std::io::Read` implementor (files, TCP
-//! sockets, `stdin`, in-memory `Cursor<Vec<u8>>`, …) using a small internal
-//! ring buffer.
-//!
-//! The public surface is intentionally identical to `AbxParser` so the two
-//! types are interchangeable; just swap the constructor.
-//!
-//! # Internal design
-//!
-//! We keep a `Vec<u8>` ring buffer (`buf`) and a `pos` cursor.  When a nom
-//! parser reports `Incomplete` we refill from the reader, slide unconsumed
-//! bytes to the front, and retry.  This gives us:
-//!
-//! - **bounded memory** — the buffer only grows when a single atom (e.g. a
-//!   very long string) exceeds the current capacity.
-//! - **zero extra copies** — nom operates directly on `&buf[pos..]`.
-//! - **identical event types** — `Event`, `Attribute`, `AttributeValue` are
-//!   all shared with the slice parser.
+//! Streaming parser over any [`Read`] source.
 
 use std::io::Read;
 
@@ -30,7 +10,7 @@ use nom::{
 use crate::{
     AbxError, Attribute, AttributeValue, CMD_ATTRIBUTE, CMD_CDSECT, CMD_COMMENT, CMD_DOCDECL,
     CMD_END_DOCUMENT, CMD_END_TAG, CMD_ENTITY_REF, CMD_IGNORABLE_WHITESPACE,
-    CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT, CMD_START_TAG, CMD_TEXT, Event, MAGIC, Result,
+    CMD_PROCESSING_INSTRUCTION, CMD_START_DOCUMENT, CMD_START_TAG, CMD_TEXT, Event, Result,
     TYPE_BOOLEAN_FALSE, TYPE_BOOLEAN_TRUE, TYPE_BYTES_BASE64, TYPE_BYTES_HEX, TYPE_DOUBLE,
     TYPE_FLOAT, TYPE_INT, TYPE_INT_HEX, TYPE_LONG, TYPE_LONG_HEX, TYPE_NULL, TYPE_STRING,
     TYPE_STRING_INTERNED, render_event,
@@ -39,54 +19,47 @@ use crate::{
 use crate::INTERNED_NEW;
 use std::collections::HashMap;
 
-/// Initial ring-buffer capacity (4 KiB).
 const INITIAL_BUF: usize = 4096;
-/// How many bytes to try to read per refill.
 const READ_CHUNK: usize = 4096;
 
-/// Pull parser that reads from any `R: Read` source.
+/// A pull parser that reads an ABX document from any [`Read`] source.
 ///
-/// # Example
-/// ```rust,ignore
-/// use android_abx::AbxStreamParser;
-/// use std::io::BufReader;
+/// The input is read in 4 KiB chunks into an internal buffer, which only grows
+/// to fit a single value larger than that. Same methods as
+/// [`AbxParser`](crate::AbxParser); it also implements [`Iterator`], yielding
+/// `Result<Event>`.
 ///
-/// let file = std::fs::File::open("backup.abx")?;
-/// let mut p = AbxStreamParser::new(BufReader::new(file))?;
+/// # Examples
 ///
-/// while let Some(ev) = p.next_event()? {
-///     match ev {
-///         android_abx::Event::StartTag { name, attributes } => {
-///             println!("<{name}>");
-///             for a in &attributes {
-///                 println!("  {}={}", a.name, a.as_str());
-///             }
-///         }
-///         android_abx::Event::EndTag { name } => println!("</{name}>"),
-///         _ => {}
-///     }
-/// }
+/// ```
+/// use android_abx::{AbxStreamParser, Event};
+///
+/// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+/// let parser = AbxStreamParser::new(&data[..])?;
+/// let tags = parser
+///     .filter(|ev| matches!(ev, Ok(Event::StartTag { .. })))
+///     .count();
+/// assert_eq!(tags, 1);
+/// # Ok::<(), android_abx::AbxError>(())
 /// ```
 #[derive(Debug)]
 pub struct AbxStreamParser<R: Read> {
     reader: R,
-    /// Internal ring buffer.
     buf: Vec<u8>,
-    /// Read cursor inside `buf`.
     pos: usize,
-    /// Total valid bytes in `buf` (always >= pos).
     len: usize,
-    /// `true` once the underlying reader returned 0 bytes.
     eof: bool,
-    /// Interned string pool.
     pool: Vec<crate::InternedStr>,
 }
 
 impl<R: Read> AbxStreamParser<R> {
-    /// Create a new parser from any reader.
+    /// Creates a parser and reads the header from `reader`.
     ///
-    /// Reads and validates the 4-byte magic header immediately.  Returns an
-    /// error if the reader is too short or the header does not match.
+    /// # Errors
+    ///
+    /// Returns [`AbxError::Io`] if reading fails, [`AbxError::UnexpectedEof`] if
+    /// the input is shorter than 4 bytes, or [`AbxError::InvalidMagic`] if it does
+    /// not start with [`MAGIC`](crate::MAGIC).
     pub fn new(reader: R) -> Result<Self> {
         let mut p = AbxStreamParser {
             reader,
@@ -97,40 +70,24 @@ impl<R: Read> AbxStreamParser<R> {
             pool: Vec::with_capacity(32),
         };
 
-        // Read at least 4 bytes for the magic header.
         p.ensure(4)?;
-
-        let magic: [u8; 4] = p.buf[p.pos..p.pos + 4].try_into().unwrap();
-        if magic != MAGIC {
-            return Err(AbxError::InvalidMagic {
-                expected: MAGIC,
-                actual: magic,
-            });
-        }
+        crate::decode::check_magic(&p.buf[p.pos..p.len])?;
         p.pos += 4;
         Ok(p)
     }
 
-    /// Number of unconsumed bytes currently in the buffer.
     #[inline]
     fn available(&self) -> usize {
         self.len - self.pos
     }
 
-    /// Compact the buffer (slide unconsumed bytes to front) then read from the
-    /// underlying reader until we have at least `needed` bytes available, or
-    /// until EOF.
+    /// Compact, then read until `needed` bytes are available or EOF.
     fn ensure(&mut self, needed: usize) -> Result<()> {
-        // Bail out before touching the buffer at all when nothing needs to
-        // be read: this is called on every event (and every string/blob
-        // read), so compacting unconditionally here turned every one of
-        // those calls into an O(available()) memmove even when no refill
-        // was going to happen.
+        // Hot path: skip the compaction memmove when no refill is needed.
         if self.available() >= needed || self.eof {
             return Ok(());
         }
 
-        // Compact first so we always have room at the back.
         if self.pos > 0 {
             self.buf.copy_within(self.pos..self.len, 0);
             self.len -= self.pos;
@@ -138,7 +95,6 @@ impl<R: Read> AbxStreamParser<R> {
         }
 
         while self.available() < needed && !self.eof {
-            // Grow if necessary.
             let spare = self.buf.len() - self.len;
             if spare < READ_CHUNK {
                 self.buf
@@ -156,8 +112,7 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(())
     }
 
-    /// Run a nom parser against the unconsumed tail of the buffer, refilling
-    /// if necessary.  Returns the parsed value and advances `pos`.
+    /// Run a `streaming` nom parser, refilling on `Incomplete`.
     fn parse<F, T>(&mut self, mut f: F) -> Result<T>
     where
         F: FnMut(&[u8]) -> nom::IResult<&[u8], T>,
@@ -176,7 +131,6 @@ impl<R: Read> AbxStreamParser<R> {
                     }
                 }
                 Err(nom::Err::Incomplete(Needed::Unknown)) => {
-                    // Should not happen with our complete:: parsers, but handle gracefully.
                     self.ensure(self.available() + 1)?;
                     if self.eof {
                         return Err(AbxError::UnexpectedEof("primitive"));
@@ -206,10 +160,8 @@ impl<R: Read> AbxStreamParser<R> {
         self.parse(|i| be_f64(i))
     }
 
-    /// Read a `u16`-length-prefixed UTF-8 blob.
     fn read_utf(&mut self) -> Result<String> {
         let len = self.read_u16()? as usize;
-        // Make sure the whole string payload is buffered.
         self.ensure(len)?;
         if self.available() < len {
             return Err(AbxError::UnexpectedEof("UTF string payload"));
@@ -221,7 +173,6 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(s)
     }
 
-    /// Read a `u16`-length-prefixed raw byte blob.
     fn read_bytes_blob(&mut self) -> Result<Vec<u8>> {
         let len = self.read_u16()? as usize;
         self.ensure(len)?;
@@ -233,9 +184,6 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(v)
     }
 
-    /// Read an interned string. Every occurrence after the first is a
-    /// back-reference into `pool`, resolved with `InternedStr::clone` (a
-    /// refcount bump) rather than a fresh allocation and copy.
     fn read_interned(&mut self) -> Result<crate::InternedStr> {
         let idx = self.read_u16()?;
         if idx == INTERNED_NEW {
@@ -269,15 +217,20 @@ impl<R: Read> AbxStreamParser<R> {
         }
     }
 
-    /// Peek at the next byte without consuming it. Returns `None` on EOF.
     fn peek_u8(&mut self) -> Result<Option<u8>> {
         self.ensure(1)?;
         Ok(self.buf.get(self.pos).copied())
     }
 
-    /// Pull the next [`Event`]. Returns `None` at end of input.
+    /// Reads the next event, or returns `None` at the end of the input.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
+    /// The parser's position after an error is unspecified.
     pub fn next_event(&mut self) -> Result<Option<Event>> {
-        // Refill at least 1 byte.
         self.ensure(1)?;
         if self.available() == 0 {
             return Ok(None);
@@ -294,13 +247,10 @@ impl<R: Read> AbxStreamParser<R> {
             CMD_START_TAG => {
                 let name = self.read_interned()?;
                 let mut attributes = Vec::with_capacity(4);
-
-                // Eagerly consume following ATTRIBUTE tokens without peeking
-                // across I/O boundaries more than necessary.
                 loop {
                     match self.peek_u8()? {
                         Some(next) if (next & 0x0F) == CMD_ATTRIBUTE => {
-                            self.pos += 1; // consume peeked byte
+                            self.pos += 1;
                             let attr_type = next & 0xF0;
                             let attr_name = self.read_interned()?;
                             let attr_value = self.read_attr_value(attr_type)?;
@@ -364,7 +314,13 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(Some(event))
     }
 
-    /// Drain all remaining events into a `Vec`.
+    /// Reads all remaining events into a `Vec`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
     pub fn collect_events(&mut self) -> Result<Vec<Event>> {
         let mut out = Vec::new();
         while let Some(ev) = self.next_event()? {
@@ -373,11 +329,28 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(out)
     }
 
-    /// Return the value of the first matching `attr` inside any `<element>`
-    /// tag. `Ok(None)` means the element/attribute wasn't found before the
-    /// document ended; `Err` means a parse failure interrupted the search.
-    /// Callers that don't care about that distinction can collapse both
-    /// into `None` with `.ok().flatten()`.
+    /// Returns the value of attribute `attr` on the next `<element>` tag that has it.
+    ///
+    /// Events are consumed up to and including the matching tag. Returns `Ok(None)`
+    /// if the document ends first.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use android_abx::{AbxStreamParser, AttributeValue};
+    ///
+    /// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+    /// let mut parser = AbxStreamParser::new(&data[..])?;
+    /// let name = parser.find_attribute("pkg", "name")?;
+    /// assert_eq!(name, Some(AttributeValue::String("com.example.chat".into())));
+    /// # Ok::<(), android_abx::AbxError>(())
+    /// ```
     pub fn find_attribute(&mut self, element: &str, attr: &str) -> Result<Option<AttributeValue>> {
         loop {
             match self.next_event()? {
@@ -392,7 +365,15 @@ impl<R: Read> AbxStreamParser<R> {
         }
     }
 
-    /// All values of `attr` found in `<element>` tags.
+    /// Returns the value of attribute `attr` on every remaining `<element>` tag.
+    ///
+    /// Tags without `attr` are skipped. Consumes the rest of the document.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
     pub fn find_all_attributes(
         &mut self,
         element: &str,
@@ -414,11 +395,16 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(out)
     }
 
-    /// Attributes of the first `<element>` tag. `Ok(None)` means no
-    /// matching tag was found before the document ended; `Err` means a
-    /// parse failure interrupted the search — see
-    /// [`find_attribute`](Self::find_attribute) for how to collapse both
-    /// into a plain `None`.
+    /// Returns the attributes of the next `<element>` tag.
+    ///
+    /// Events are consumed up to and including the matching tag. Returns `Ok(None)`
+    /// if the document ends first.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
     pub fn attributes_of(&mut self, element: &str) -> Result<Option<Vec<Attribute>>> {
         loop {
             match self.next_event()? {
@@ -431,7 +417,15 @@ impl<R: Read> AbxStreamParser<R> {
         }
     }
 
-    /// Attributes of every `<element>` tag.
+    /// Returns the attributes of every remaining `<element>` tag.
+    ///
+    /// Consumes the rest of the document.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
     pub fn all_attributes_of(&mut self, element: &str) -> Result<Vec<Vec<Attribute>>> {
         let mut out = Vec::new();
         while let Some(ev) = self.next_event()? {
@@ -444,9 +438,45 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(out)
     }
 
-    /// Find the next `<element>`, deserialize its attributes (and direct
-    /// text content, via a `#[serde(rename = "$text")]` field) into `T`,
-    /// then skip past its matching end tag. `Ok(None)` at end of document.
+    /// Deserializes the next `<element>` into `T`.
+    ///
+    /// Events are consumed up to and including the element's closing tag. Returns
+    /// `Ok(None)` if the document ends first. See
+    /// [Deserializing with serde](crate#deserializing-with-serde) for how fields are
+    /// matched.
+    ///
+    /// # Errors
+    ///
+    /// Returns a parse error if the input is malformed, or
+    /// [`AbxError::Deserialization`](crate::AbxError::Deserialization) if the element
+    /// does not match `T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use android_abx::AbxStreamParser;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Permission {
+    ///     name: String,
+    /// }
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Pkg {
+    ///     name: String,
+    ///     description: String,
+    ///     permission: Vec<Permission>,
+    /// }
+    ///
+    /// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/nested_permissions.abx"));
+    /// let mut parser = AbxStreamParser::new(&data[..])?;
+    /// let pkg: Pkg = parser.deserialize_next("pkg")?.unwrap();
+    /// assert_eq!(pkg.name, "com.example.chat");
+    /// assert_eq!(pkg.description, "A chat app");
+    /// assert_eq!(pkg.permission.len(), 2);
+    /// # Ok::<(), android_abx::AbxError>(())
+    /// ```
     #[cfg(feature = "serialize")]
     pub fn deserialize_next<T: serde::de::DeserializeOwned>(
         &mut self,
@@ -455,7 +485,11 @@ impl<R: Read> AbxStreamParser<R> {
         crate::de::find_and_consume_element(self, element)
     }
 
-    /// Deserialize every remaining `<element>` into a `Vec<T>`.
+    /// Deserializes every remaining `<element>` into a `Vec<T>`.
+    ///
+    /// # Errors
+    ///
+    /// Same as [`deserialize_next`](Self::deserialize_next).
     #[cfg(feature = "serialize")]
     pub fn deserialize_all<T: serde::de::DeserializeOwned>(
         &mut self,
@@ -468,9 +502,31 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(out)
     }
 
-    /// Lazily deserialize every remaining `<element>` as a `T`, one at a
-    /// time, without buffering the whole document or the whole result set —
-    /// the streaming counterpart to [`deserialize_all`](Self::deserialize_all).
+    /// Returns an iterator that deserializes each remaining `<element>` into `T`.
+    ///
+    /// Elements are read one at a time, so memory use does not grow with the
+    /// document.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use android_abx::AbxStreamParser;
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// struct Permission {
+    ///     name: String,
+    /// }
+    ///
+    /// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/nested_permissions.abx"));
+    /// let mut parser = AbxStreamParser::new(&data[..])?;
+    /// let names = parser
+    ///     .deserialize_iter::<Permission>("permission")
+    ///     .map(|p| p.map(|p| p.name))
+    ///     .collect::<Result<Vec<_>, _>>()?;
+    /// assert_eq!(names, ["INTERNET", "CAMERA"]);
+    /// # Ok::<(), android_abx::AbxError>(())
+    /// ```
     #[cfg(feature = "serialize")]
     pub fn deserialize_iter<'p, T: serde::de::DeserializeOwned>(
         &'p mut self,
@@ -483,7 +539,27 @@ impl<R: Read> AbxStreamParser<R> {
         }
     }
 
-    /// Render the rest of the document as an XML string.
+    /// Renders the remaining events as an XML string.
+    ///
+    /// The output starts with an `<?xml ...?>` declaration. Text and attribute values
+    /// are escaped; empty elements are written as an opening and a closing tag.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use android_abx::AbxStreamParser;
+    ///
+    /// # let data = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/simple_pkg.abx"));
+    /// let xml = AbxStreamParser::new(&data[..])?.to_xml()?;
+    /// assert!(xml.ends_with(r#"<pkg name="com.example.chat" version="3" flags="1"></pkg>"#));
+    /// # Ok::<(), android_abx::AbxError>(())
+    /// ```
     pub fn to_xml(&mut self) -> Result<String> {
         let mut buf = String::from(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
         while let Some(ev) = self.next_event()? {
@@ -495,14 +571,18 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(buf)
     }
 
-    /// Write the rest of the document as XML into any `std::io::Write` sink.
+    /// Writes the remaining events as XML to `writer`.
     ///
-    /// More memory-efficient than [`to_xml`](AbxStreamParser::to_xml) for very
-    /// large files because it does not accumulate the whole result in a `String`.
+    /// Same output as [`to_xml`](Self::to_xml), without building the whole string
+    /// in memory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`](crate::AbxError::Io) if reading or writing fails.
     pub fn write_xml(&mut self, writer: &mut impl std::io::Write) -> Result<()> {
         writer.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
-        // One scratch buffer reused (cleared, not reallocated) across every
-        // event, instead of a fresh allocation per event.
         let mut tmp = String::new();
         while let Some(ev) = self.next_event()? {
             if matches!(ev, Event::EndDocument) {
@@ -515,7 +595,16 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(())
     }
 
-    /// Collect the whole document into a `HashMap<element → Vec<HashMap<attr → value_str>>>`.
+    /// Collects the attributes of every remaining tag, grouped by tag name.
+    ///
+    /// Values are rendered with [`AttributeValue::as_str`](crate::AttributeValue::as_str).
+    /// Text and nesting are discarded.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input is truncated or malformed (unknown token,
+    /// invalid interned-string index, invalid UTF-8).
+    /// Also returns [`AbxError::Io`] if reading fails.
     pub fn into_map(mut self) -> Result<HashMap<String, Vec<HashMap<String, String>>>> {
         let mut map: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
         while let Some(ev) = self.next_event()? {
@@ -531,7 +620,7 @@ impl<R: Read> AbxStreamParser<R> {
         Ok(map)
     }
 
-    /// Unwrap the underlying reader, discarding any buffered data.
+    /// Returns the underlying reader. Bytes already buffered but not parsed are lost.
     pub fn into_inner(self) -> R {
         self.reader
     }
@@ -549,8 +638,9 @@ impl<R: Read> Iterator for AbxStreamParser<R> {
     }
 }
 
-/// Lazily yields each remaining `<element>`, deserialized into `T`. See
-/// [`AbxStreamParser::deserialize_iter`].
+/// Iterator returned by [`AbxStreamParser::deserialize_iter`].
+///
+/// Yields `Result<T>` for each matching element.
 #[cfg(feature = "serialize")]
 pub struct DeserializeIter<'p, R: Read, T> {
     parser: &'p mut AbxStreamParser<R>,
