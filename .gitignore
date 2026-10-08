@@ -22,3 +22,6 @@ agents.md
 .claude
 .vscode
 docs/*
+!docs/DESIGN.md
+!docs/AOSP_VERIFICATION.md
+!docs/BENCHMARKS.md
