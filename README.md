@@ -38,7 +38,7 @@ different, chunk-based binary format, unrelated to ABX beyond sharing the
 | Attribute values | A closed set of primitives — string, int, long, float, double, bool, bytes — no concept of a "resource" | Can be a literal *or* a reference into the resource table (`@string/foo`), resolved at load time |
 | Typical tooling | `xml2abx`/`abx2xml` | `aapt2 dump xmltree`, `apktool`, `androguard` |
 
-`abx`'s `nom`-based token-stream parser doesn't transfer to AXML — that
+`abx`'s token-stream parser doesn't transfer to AXML — that
 needs chunk/length-prefixed parsing and a resource-table-aware resolver.
 
 ## Quick start
@@ -127,14 +127,15 @@ let bytes = android_abx::events_to_abx(&events)?;
 
 ## Design
 
-Two parser implementations sharing the same `Event`/`Attribute`/
-`AttributeValue` types and XML-rendering logic, so their output is always
-identical:
+Two parser types sharing the same `Event`/`Attribute`/`AttributeValue`
+types, XML-rendering logic, and a single [`winnow`](https://docs.rs/winnow)
+event grammar, so their output (and their errors) are always identical:
 
 - **`AbxParser`** — zero-allocation, operates on an in-memory `&[u8]`.
 - **`AbxStreamParser`** — reads from any `impl std::io::Read` through an
   internal ring buffer, for files, sockets, or pipes too large (or too
-  live) to buffer up front.
+  live) to buffer up front. It runs the same grammar on winnow's `Partial`
+  input and re-parses an event from its start whenever the buffer runs dry.
 
 Both expose the same convenience surface: `to_xml`/`write_xml`,
 `find_attribute`/`find_all_attributes`, `attributes_of`/`all_attributes_of`,
@@ -271,16 +272,20 @@ than trusting these):
 
 | Benchmark | Time |
 |---|---|
-| `parse_events/AbxParser` | 2.71ms |
-| `parse_events/AbxStreamParser` | 3.04ms |
-| `to_xml/AbxParser` | 2.24ms |
-| `deserialize_all/AbxParser` | 2.33ms |
-| `deserialize_iter` (streaming) | 2.74ms |
+| `parse_events/AbxParser` | 2.49ms |
+| `parse_events/AbxStreamParser` | 2.79ms |
+| `to_xml/AbxParser` | 2.26ms |
+| `to_xml/AbxStreamParser` | 2.31ms |
+| `deserialize_all/AbxParser` | 2.32ms |
+| `deserialize_iter` (streaming) | 2.49ms |
 | `events_to_abx/AbxWriter` | 341µs |
 | `xml_to_abx` | 2.56ms |
 
-`AbxParser` beats `AbxStreamParser` by roughly 1.1–1.2x, the expected
-irreducible cost of the ring buffer's bookkeeping over a zero-copy slice.
+`AbxParser` beats `AbxStreamParser` by roughly 1.0–1.1x, the remaining
+cost of the ring buffer's bookkeeping over a zero-copy slice. Moving from
+`nom` to a shared `winnow` grammar made the streaming parser ~7–11% faster
+and the slice parser ~0–4% slower in A/B runs on the same machine — the
+latter within this machine's run-to-run noise.
 The serde layer's overhead over raw event walking is negligible — for the
 streaming parser it's actually *faster* than collecting every raw `Event`
 into a `Vec`, since `deserialize_iter` only retains the small deserialized
