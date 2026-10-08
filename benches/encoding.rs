@@ -1,7 +1,4 @@
-//! Benchmarks `AbxWriter`/`events_to_abx` — the reverse of `parsing.rs` —
-//! encoding a synthetic `Event` stream to ABX bytes, at a few sizes.
-//!
-//! Run with: `cargo bench --bench encoding`
+//! `cargo bench --bench encoding`
 
 use android_abx::{AbxParser, events_to_abx};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
@@ -26,11 +23,6 @@ fn bench_events_to_abx(c: &mut Criterion) {
     group.finish();
 }
 
-/// Encodes the event stream decoded from the real AOSP-generated
-/// `aosp_verify.abx` fixture, instead of only synthetic data. The
-/// `assert_eq!` below is a cheap, one-time correctness guard, not part of
-/// the timed loop — it would have caught the `write_utf`/`write_bytes_blob`
-/// length-prefix truncation bug this bench was added alongside.
 fn bench_encode_real_fixture(c: &mut Criterion) {
     let data = include_bytes!("../tests/fixtures/aosp_verify.abx");
     let events = AbxParser::new(data).unwrap().collect_events().unwrap();

@@ -1,9 +1,4 @@
-//! Compares `AbxParser` (in-memory) against `AbxStreamParser` (streaming,
-//! fed via an in-memory `Cursor` to isolate ring-buffer/refill overhead
-//! from actual I/O cost) on synthetic data at a few sizes. HTML report at
-//! `target/criterion/report/index.html` after running.
-//!
-//! Run with: `cargo bench --bench parsing`
+//! `cargo bench --bench parsing`
 
 use std::io::Cursor;
 
@@ -39,9 +34,6 @@ fn bench_parse_events(c: &mut Criterion) {
     group.finish();
 }
 
-/// Same shape as `bench_parse_events`, but on the real AOSP-generated
-/// `aosp_verify.abx` fixture (see `tests/aosp_fixture_tests.rs::aosp_verify_fixture`,
-/// which verifies this file byte-for-byte) instead of only synthetic data.
 fn bench_parse_real_fixture(c: &mut Criterion) {
     let data = include_bytes!("../tests/fixtures/aosp_verify.abx");
     let mut group = c.benchmark_group("parse_real_fixture");

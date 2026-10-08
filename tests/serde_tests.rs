@@ -1,9 +1,4 @@
 #![cfg(feature = "serialize")]
-//! Integration tests for `serde` deserialization of ABX elements into
-//! structs, exercised through both `AbxParser` and `AbxStreamParser`.
-
-// Fixture value 2.718281828 is an intentionally imprecise literal, not an
-// attempt at std::f64::consts::E.
 #![allow(clippy::approx_constant)]
 
 use std::io::Cursor;
@@ -69,8 +64,6 @@ struct Renamed {
 
 #[test]
 fn deserialize_with_rename() {
-    // Attribute name "pkg-name" isn't a valid Rust identifier, so the
-    // struct field must use #[serde(rename)] to reach it.
     let data = document(&[
         start_tag("pkg"),
         attr_string("pkg-name", "com.example"),
@@ -118,8 +111,7 @@ struct Nullable {
 
 #[test]
 fn deserialize_null_attribute_is_none() {
-    // Distinct from a *missing* attribute: this one is present with an
-    // explicit TYPE_NULL value.
+    // Present with TYPE_NULL, not missing.
     let data = document(&[start_tag("e"), attr_null("value"), end_tag("e")]);
     let mut p = AbxParser::new(&data).unwrap();
     let v: Nullable = p.deserialize_next("e").unwrap().unwrap();
@@ -193,9 +185,6 @@ struct Outer {
 
 #[test]
 fn deserialize_skips_nested_children() {
-    // The nested <inner> element's own attributes must not leak into Outer,
-    // and the parser must still land on the *second* top-level <outer>
-    // afterwards rather than getting confused by the extra end tag.
     let data = document(&[
         start_tag("outer"),
         attr_int("attr", 1),
@@ -431,9 +420,6 @@ struct Named {
 
 #[test]
 fn deserialize_empty_string_attribute_is_some_empty_not_none() {
-    // A present-but-empty attribute is Some(""), distinct from an absent
-    // one (None) — same distinction quick-xml documents for optional
-    // fields ("Some("") represents an empty attribute").
     let data = document(&[start_tag("e"), attr_string("label", ""), end_tag("e")]);
     let mut p = AbxParser::new(&data).unwrap();
     let e: Named = p.deserialize_next("e").unwrap().unwrap();
@@ -532,9 +518,6 @@ fn deserialize_repeated_children_as_vec() {
 #[derive(Debug, Deserialize, PartialEq)]
 struct WithDescription {
     id: i32,
-    // <description> is a leaf child (just text, no attributes/children of
-    // its own) so it should deserialize straight into a String, the same
-    // way an XML text-only element does in quick-xml.
     description: String,
 }
 
@@ -561,8 +544,6 @@ fn deserialize_leaf_child_as_scalar_string() {
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct WithCount {
-    // Leaf child text parsed as a number, via serde's own str->number
-    // fallback (no special-casing needed on our side).
     count: i32,
 }
 
@@ -600,9 +581,6 @@ struct IdHolder {
 
 #[test]
 fn deserialize_attribute_wins_over_same_named_child() {
-    // Both an "id" attribute and an "id" child element are present; the
-    // attribute must win (and this must not panic/error as a "duplicate
-    // field", which is the trap quick-xml's @attr prefix exists to avoid).
     let data = document(&[
         start_tag("e"),
         attr_int("id", 1),
@@ -683,7 +661,7 @@ fn deserialize_deny_unknown_fields_rejects_unknown_child() {
 #[test]
 fn from_slice_deserializes_root_element_regardless_of_tag_name() {
     let data = document(&[
-        start_tag("anything"), // deliberately not "pkg" -- name is unchecked
+        start_tag("anything"),
         attr_string("name", "com.example"),
         attr_int("version", 3),
         end_tag("anything"),
@@ -731,7 +709,7 @@ fn from_slice_and_from_reader_agree() {
 
 #[test]
 fn from_slice_errors_when_document_has_no_root_element() {
-    let data = document(&[]); // StartDocument + EndDocument only
+    let data = document(&[]);
     let result: android_abx::Result<Pkg> = android_abx::from_slice(&data);
     assert!(
         result.is_err(),
@@ -741,9 +719,6 @@ fn from_slice_errors_when_document_has_no_root_element() {
 
 #[test]
 fn from_slice_supports_nested_children_like_deserialize_next() {
-    // from_slice/from_reader reuse the same ElementDeserializer as
-    // deserialize_next, so nested-child mapping works identically -- not a
-    // separate, more limited code path.
     let data = document(&[
         start_tag("pkg"),
         attr_string("name", "com.example"),

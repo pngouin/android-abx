@@ -1,37 +1,6 @@
-//! Regression tests against real `.abx` files — every fixture in
-//! `tests/fixtures/` is produced by the real, unmodified AOSP
-//! `BinaryXmlSerializer` itself (compiled and run directly, not just read),
-//! via `tests/fixtures/aosp_verify/`. See that directory's `Containerfile`/
-//! `build-and-run.sh` to regenerate all of them at once, and `CLAUDE.md`'s
-//! "VERIFIED" section for what running the real source turned up.
-//!
-//! These fixtures matter for the same reason real data always beats
-//! synthetic blobs here: an earlier version of this crate had every
-//! `TYPE_*` constant off by `0x10` relative to real AOSP, and every
-//! synthetic-blob test passed anyway because `tests/common/mod.rs` used the
-//! same wrong constants. Only real, independently-encoded data caught it —
-//! see the "FIXED" section in `CLAUDE.md`. (At the time, these fixtures
-//! were produced by a third-party `xml2abx` tool rather than real AOSP
-//! source directly; they've since been regenerated the stronger way.)
-//!
-//! Source `.xml` files sit alongside each `.abx` fixture in
-//! `tests/fixtures/` as human-readable reference — they're no longer the
-//! literal generation input (the corresponding Java in
-//! `tests/fixtures/aosp_verify/Harness.java` is), so may differ in
-//! incidental ways like exact attribute typing (e.g. `version="3"` as text
-//! vs. `attributeInt`) that don't affect the logical content.
-//!
-//! Most tests below also assert the exact wire bytes, built independently
-//! via `tests/common/mod.rs`'s builders rather than by decoding `data` or
-//! re-encoding through `AbxWriter` — so a symmetric bug shared between
-//! decode and encode can't hide here. Safe to rely on those builders in
-//! this file specifically because every fixture's exact content is fully
-//! known up front (authored in `Harness.java`), unlike a black-box
-//! independent tool's output.
+//! Tests against `.abx` fixtures encoded by real AOSP `BinaryXmlSerializer`
+//! (`tests/fixtures/aosp_verify/`).
 
-// Fixture values like 3.14/2.71828 are intentionally imprecise literals,
-// not attempts at std::f64::consts::PI/E — the exact byte/string
-// representation of the literal itself is what's under test.
 #![allow(clippy::approx_constant)]
 
 use android_abx::{AbxParser, AbxStreamParser, Attribute, AttributeValue, Event};
@@ -47,20 +16,14 @@ fn attr<'a>(attributes: &'a [Attribute], name: &str) -> &'a AttributeValue {
     &attributes.iter().find(|a| a.name == name).unwrap().value
 }
 
-/// `type_nibble|cmd` + a back-reference to pool index `idx` — for
-/// constructing expected bytes where `tests/common/mod.rs`'s `start_tag`/
-/// `end_tag`/`attr_*` builders (which always assume a *fresh* string) can't
-/// express a repeated name or interned value.
+/// `type_nibble|cmd` + back-reference to pool index `idx`.
 fn backref(type_nibble: u8, cmd: u8, idx: u16) -> Vec<u8> {
     let mut v = vec![type_nibble | cmd];
     v.extend(common::interned_ref(idx));
     v
 }
 
-/// A plain (non-interned-value) string attribute whose *name* is a
-/// back-reference to pool index `name_idx` rather than a fresh string —
-/// `tests/common/mod.rs::attr_string` always interns the name fresh, which
-/// is only right for a name's first occurrence.
+/// String attribute whose name is a back-reference.
 fn attr_string_named_backref(name_idx: u16, value: &str) -> Vec<u8> {
     let mut v = vec![common::TYPE_STRING | common::CMD_ATTRIBUTE];
     v.extend(common::interned_ref(name_idx));
@@ -68,12 +31,7 @@ fn attr_string_named_backref(name_idx: u16, value: &str) -> Vec<u8> {
     v
 }
 
-/// An `attributeInterned`-style attribute token: `TYPE_STRING_INTERNED|
-/// CMD_ATTRIBUTE` + pre-built name bytes + pre-built value bytes (each
-/// either `common::interned_new(s)` for a first occurrence or
-/// `common::interned_ref(idx)` for a repeat — the caller tracks pool
-/// state). No dedicated builder for this exists in `tests/common/mod.rs`
-/// since nothing else needs it.
+/// `attributeInterned` token from pre-built name/value bytes.
 fn attr_interned_raw(name_bytes: Vec<u8>, value_bytes: Vec<u8>) -> Vec<u8> {
     let mut v = vec![common::TYPE_STRING_INTERNED | common::CMD_ATTRIBUTE];
     v.extend(name_bytes);
@@ -86,9 +44,6 @@ fn simple_pkg_fixture() {
     let data = include_bytes!("fixtures/simple_pkg.abx");
     let evs = events(data);
 
-    // version/flags are attributeInt in the real fixture (see Harness.java)
-    // -- properly typed, unlike a plain string. as_str() renders the same
-    // digits either way, so the XML text form doesn't change.
     assert_eq!(
         evs,
         vec![
@@ -121,8 +76,6 @@ fn simple_pkg_fixture() {
         r#"<?xml version="1.0" encoding="UTF-8"?><pkg name="com.example.chat" version="3" flags="1"></pkg>"#
     );
 
-    // The slice and streaming parsers must agree on real external data too,
-    // not just on our own synthetic blobs.
     let mut sp = AbxStreamParser::new(Cursor::new(data.to_vec())).unwrap();
     assert_eq!(sp.to_xml().unwrap(), xml);
 
@@ -171,9 +124,6 @@ fn nested_permissions_fixture() {
     let mut pkg_start = common::start_tag("pkg");
     pkg_start.extend(common::attr_string("name", "com.example.chat"));
 
-    // "name" is already interned (pool index 1, from pkg's own "name"
-    // attribute) by the time the first <permission> is reached, so its
-    // attribute name here is a back-reference too, not a fresh intern.
     let mut permission1 = common::start_tag("permission");
     permission1.extend(attr_string_named_backref(1, "INTERNET"));
     let mut permission2 = backref(common::TYPE_STRING_INTERNED, common::CMD_START_TAG, 3);
@@ -195,11 +145,6 @@ fn nested_permissions_fixture() {
 
 #[test]
 fn booleans_fixture_typed_attributes() {
-    // Every attribute here is properly typed in the real fixture (see
-    // Harness.java): attributeBoolean for enabled/hidden, attributeInt for
-    // count, attributeDouble for ratio. Real AOSP's own attribute() would
-    // also be able to leave these as plain strings, same as any other
-    // caller choice -- this fixture specifically exercises the typed path.
     let data = include_bytes!("fixtures/booleans.abx");
     let evs = events(data);
 
@@ -245,18 +190,8 @@ fn special_chars_fixture() {
             _ => None,
         })
         .unwrap();
-    // BinaryXmlSerializer.attribute() takes a plain Java String with no
-    // XML-escaping concept at that API level, so the real fixture passes
-    // the already-*decoded* value (see Harness.java) -- unlike the
-    // previous xml2abx-sourced fixture, which left it raw/escaped (a quirk
-    // of that independent tool, not of AOSP itself; still true of
-    // `xml2abx` today, just no longer what's checked into this repo).
     assert_eq!(title, "Tom & Jerry <3>");
 
-    // Text content is split into explicit text()/entityRef() calls in
-    // Harness.java, the same way a real XML-aware caller built on this API
-    // would emit entities as distinct tokens -- this crate reconstructs
-    // the exact original escaped form on re-render either way.
     let xml = android_abx::abx_to_xml(data).unwrap();
     assert!(xml.contains(r#"title="Tom &amp; Jerry &lt;3&gt;""#));
     assert!(xml.contains(r#">Use &quot;quotes&quot; &amp; &apos;apostrophes&apos; safely<"#));
@@ -286,9 +221,6 @@ fn repeated_strings_fixture_interning() {
     let data = include_bytes!("fixtures/repeated_strings.abx");
     let evs = events(data);
 
-    // "id" is attributeInt in the real fixture (not a plain string), so
-    // compare its rendered text form via as_str() rather than as_string()
-    // (which only extracts the String variant).
     let items: Vec<(String, &str, &str)> = evs
         .iter()
         .filter_map(|e| match e {
@@ -314,17 +246,9 @@ fn repeated_strings_fixture_interning() {
         ]
     );
 
-    // Same real, interning-heavy data through the streaming parser must
-    // decode identically to the slice parser.
     let mut sp = AbxStreamParser::new(Cursor::new(data.to_vec())).unwrap();
     assert_eq!(sp.collect_events().unwrap(), evs);
 
-    // "id" is attributeInt in the real fixture; "category"/"name" use
-    // attributeInterned (not plain attribute), so repeated values
-    // back-reference on the wire -- real AOSP's plain attribute() never
-    // auto-interns a value (see CLAUDE.md), only attributeInterned() does,
-    // so this is what keeps this fixture's interning coverage genuine
-    // rather than replicating a third-party tool's behavior by guesswork.
     // Pool order: catalog=0, item=1, id=2, category=3, tools=4, name=5,
     // Hammer=6, Wrench=7, Screwdriver=8, parts=9, Bolt=10, Nut=11,
     // Washer=12, Pliers=13.
@@ -399,8 +323,6 @@ fn repeated_strings_fixture_interning() {
     assert_eq!(data, &expected[..]);
 }
 
-/// Covers every `AttributeValue` variant abx's encoder can produce and
-/// every text-bearing `Event` variant in one document.
 #[test]
 fn aosp_verify_fixture() {
     let data = include_bytes!("fixtures/aosp_verify.abx");
@@ -481,8 +403,6 @@ fn aosp_verify_fixture() {
         ]
     );
 
-    // events_to_abx re-encoding this real-AOSP-decoded stream must byte-match
-    // the real AOSP serializer's own output exactly.
     assert_eq!(android_abx::events_to_abx(&evs).unwrap(), data);
 
     let mut root_start = common::start_tag("root");

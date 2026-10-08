@@ -1,7 +1,4 @@
 #![allow(dead_code)]
-//! Shared synthetic-data generator for the criterion benches in this
-//! directory, reusing the same wire-format builders as the integration
-//! tests (`tests/common/mod.rs`) rather than keeping a second copy.
 
 #[path = "../../tests/common/mod.rs"]
 mod wire;
@@ -9,10 +6,7 @@ pub use wire::*;
 
 use android_abx::{Attribute, AttributeValue, Event};
 
-/// A synthetic ABX document with `n` repeated `<pkg>` elements, each
-/// carrying a string, an int, and a bool attribute — roughly the shape of
-/// a real AOSP `packages.xml` record (see `tests/fixtures/simple_pkg.xml`,
-/// generated from real data via the local `xml2abx` tool).
+/// `n` `<pkg>` elements, each with string, int and bool attributes.
 pub fn synthetic_document(n: usize) -> Vec<u8> {
     let mut parts = Vec::with_capacity(n * 5);
     for i in 0..n {
@@ -25,8 +19,7 @@ pub fn synthetic_document(n: usize) -> Vec<u8> {
     document(&parts)
 }
 
-/// The `Event`-stream equivalent of `synthetic_document(n)` — same shape,
-/// for benchmarking the encode direction (`AbxWriter`/`events_to_abx`).
+/// [`synthetic_document`] as events.
 pub fn synthetic_events(n: usize) -> Vec<Event> {
     let mut events = Vec::with_capacity(n * 2 + 2);
     events.push(Event::StartDocument);
@@ -54,8 +47,7 @@ pub fn synthetic_events(n: usize) -> Vec<Event> {
     events
 }
 
-/// The plain-XML-text equivalent of `synthetic_document(n)` — for
-/// benchmarking `xml_to_abx`.
+/// [`synthetic_document`] as XML text.
 pub fn synthetic_xml(n: usize) -> String {
     let mut s = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<packages>\n");
     for i in 0..n {

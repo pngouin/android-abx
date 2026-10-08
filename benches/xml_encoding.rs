@@ -1,7 +1,4 @@
-//! Benchmarks `xml_to_abx` (the XML-text-parsing half of encoding, needs
-//! `quick-xml`) at a few sizes.
-//!
-//! Run with: `cargo bench --bench xml_encoding --features xml`
+//! `cargo bench --bench xml_encoding --features xml`
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;

@@ -1,9 +1,4 @@
-//! Benchmarks the `serialize` layer against the raw event-level API on
-//! identical synthetic data — how much `deserialize_all`/`deserialize_iter`
-//! cost over just walking `Event`s, and (again) `AbxParser` vs
-//! `AbxStreamParser`, this time through the serde entry points.
-//!
-//! Run with: `cargo bench --bench deserialize --features serialize`
+//! `cargo bench --bench deserialize --features serialize`
 
 use std::io::Cursor;
 
@@ -18,7 +13,7 @@ use common::synthetic_document;
 const SIZES: [usize; 3] = [100, 1_000, 10_000];
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)] // fields only ever observed via black_box, never individually read
+#[allow(dead_code)]
 struct Pkg {
     name: String,
     version: i32,

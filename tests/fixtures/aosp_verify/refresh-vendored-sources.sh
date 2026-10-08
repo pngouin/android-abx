@@ -1,10 +1,5 @@
 #!/usr/bin/env sh
-# Maintainer-only: re-fetches current upstream AOSP source and overwrites
-# the copies checked into vendor/aosp/, so they can be periodically synced
-# with real AOSP `main`. Not run automatically by build-and-run.sh or the
-# Containerfile -- both build fully offline from what's already vendored.
-# Review the diff before committing; a behavior change upstream is exactly
-# what this whole harness exists to catch.
+# Maintainer-only: re-fetch upstream AOSP sources into vendor/aosp/. Review the diff.
 set -eu
 
 cd "$(dirname "$0")"

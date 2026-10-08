@@ -1,18 +1,9 @@
-//! Integration tests for the ABX encoder (`AbxWriter`/`events_to_abx`),
-//! asserting exact wire bytes against `tests/common/mod.rs`'s builders
-//! (used here as the expected-bytes oracle, not as parser input).
-
-// Fixture value 2.71828 is an intentionally imprecise literal, not an
-// attempt at std::f64::consts::E.
 #![allow(clippy::approx_constant)]
 
 use android_abx::{AbxWriter, Attribute, AttributeValue, Event};
 
 mod common;
 
-/// `<tag attr=value/>`: builds expected bytes by appending the attribute
-/// builder's output directly after `start_tag`'s (how the wire format lays
-/// them out), then a back-referencing end tag.
 fn assert_single_attr_roundtrip(value: AttributeValue, attr_bytes: Vec<u8>) {
     let mut w = AbxWriter::new(Vec::new()).unwrap();
     w.write_event(&Event::StartDocument).unwrap();
@@ -48,9 +39,6 @@ fn writer_encodes_empty_document() {
     assert_eq!(w.into_inner(), common::document(&[]));
 }
 
-/// The pool is shared across every tag-name occurrence, so an end tag
-/// naturally back-references its own start tag's name. `common::end_tag`
-/// always assumes a fresh string, so build that token by hand.
 fn interned_backref(cmd: u8, idx: u16) -> Vec<u8> {
     let mut v = vec![common::TYPE_STRING_INTERNED | cmd];
     v.extend(common::interned_ref(idx));
@@ -72,8 +60,6 @@ fn writer_encodes_start_and_end_tag() {
     .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
-    // "root" is interned fresh by StartTag; EndTag repeats the same name,
-    // so it must be a back-reference, not a second fresh string.
     let expected = common::document(&[
         common::start_tag("root"),
         interned_backref(common::CMD_END_TAG, 0),
@@ -101,8 +87,6 @@ fn writer_interns_repeated_tag_name() {
         .unwrap();
     w.write_event(&Event::EndDocument).unwrap();
 
-    // Only the very first "pkg" occurrence is fresh; every occurrence after
-    // that (end tag included) is a back-reference to the same pool index.
     let expected = common::document(&[
         common::start_tag("pkg"),
         interned_backref(common::CMD_END_TAG, 0),
@@ -198,8 +182,7 @@ fn writer_encodes_attr_boolean_false() {
 
 #[test]
 fn writer_does_not_intern_repeated_attribute_string_value() {
-    // AOSP's generic attribute(name, value) never interns the value, only
-    // the name — a repeated String value is written fresh every time.
+    // Values are never interned.
     let mut w = AbxWriter::new(Vec::new()).unwrap();
     w.write_event(&Event::StartDocument).unwrap();
     w.write_event(&Event::StartTag {
@@ -227,9 +210,6 @@ fn writer_does_not_intern_repeated_attribute_string_value() {
     assert_eq!(w.into_inner(), expected);
 }
 
-/// Both the empty-string (-> `TYPE_NULL`) and non-empty (-> `TYPE_STRING`)
-/// cases for one of the seven text-bearing `Event` variants that all share
-/// AOSP's `writeToken` shape.
 fn assert_text_like_roundtrip(cmd: u8, make_event: impl Fn(String) -> Event) {
     for s in ["", "hello"] {
         let mut w = AbxWriter::new(Vec::new()).unwrap();
@@ -321,8 +301,6 @@ fn events_to_abx_round_trips_through_decoder() {
     assert_eq!(decoded, events);
 }
 
-/// Matches AOSP's `FastDataOutput.writeUTF()`, which accepts a string right
-/// up to `MAX_UNSIGNED_SHORT` (65,535) encoded bytes.
 #[test]
 fn writer_encodes_string_at_max_length_boundary() {
     let s = "a".repeat(65_535);
@@ -339,11 +317,6 @@ fn writer_encodes_string_at_max_length_boundary() {
     assert_eq!(evs[1], Event::Text(s));
 }
 
-/// Matches AOSP's `FastDataOutput.writeUTF()`, which throws
-/// `UTFDataFormatException` once the encoded length exceeds
-/// `MAX_UNSIGNED_SHORT` (65,535) — this crate rejects instead of silently
-/// truncating the `u16` wire length prefix (which would corrupt everything
-/// written after).
 #[test]
 fn writer_errors_on_oversized_text() {
     let s = "a".repeat(65_536);
@@ -359,8 +332,6 @@ fn writer_errors_on_oversized_text() {
     ));
 }
 
-/// Same boundary as `writer_errors_on_oversized_text`, via an attribute's
-/// `String` value rather than a text-bearing event.
 #[test]
 fn writer_errors_on_oversized_attr_string() {
     let s = "a".repeat(65_536);
@@ -384,9 +355,6 @@ fn writer_errors_on_oversized_attr_string() {
     ));
 }
 
-/// Matches AOSP's `BinaryXmlSerializer.attributeBytesHex`/
-/// `attributeBytesBase64`, which explicitly check `value.length >
-/// MAX_UNSIGNED_SHORT` and throw before writing anything.
 #[test]
 fn writer_errors_on_oversized_bytes_blob() {
     let b = vec![0u8; 65_536];
@@ -412,13 +380,9 @@ fn writer_errors_on_oversized_bytes_blob() {
 
 #[test]
 fn writer_gracefully_degrades_past_interned_pool_limit() {
-    // Matches real AOSP: past its 65535-entry cap, a new name is written
-    // fresh instead of cached, but nothing errors, and names interned
-    // before the cap still back-reference correctly.
     let mut w = AbxWriter::new(Vec::new()).unwrap();
     w.write_event(&Event::StartDocument).unwrap();
-    // Fill every valid index (0..=0xFFFE = 0xFFFF entries) -- 0xFFFF itself
-    // is reserved as the INTERNED_NEW sentinel.
+    // Fill indices 0..=0xFFFE; 0xFFFF is the INTERNED_NEW sentinel.
     for i in 0..0xFFFFu32 {
         w.write_event(&Event::StartTag {
             name: format!("n{i}").into(),
@@ -426,7 +390,6 @@ fn writer_gracefully_degrades_past_interned_pool_limit() {
         })
         .unwrap();
     }
-    // Past the cap: a brand-new name, then a repeat of a pre-cap name.
     w.write_event(&Event::StartTag {
         name: "over".into(),
         attributes: vec![],

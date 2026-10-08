@@ -1,10 +1,4 @@
-//! `xml2abx` — command-line tool built on top of the `abx` library, the
-//! reverse of the `abx2xml` example.
-//!
-//! Usage:
-//!   xml2abx <input.xml>            → writes ABX bytes to stdout
-//!   xml2abx <input.xml> <out.abx>  → writes to file
-//!   echo … | xml2abx -             → reads from stdin
+//! Usage: xml2abx <input.xml|-> [output.abx]
 
 use std::{
     fs,

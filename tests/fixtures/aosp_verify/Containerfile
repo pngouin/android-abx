@@ -1,14 +1,6 @@
-# Reproducible re-run of the "compile and run the real AOSP source" check
-# documented in this repo's CLAUDE.md ("VERIFIED: encoder checked against
-# real AOSP source by actually compiling and running it") and README.md
-# ("Verifying against real AOSP"). Builds fully offline from vendor/ (see
-# vendor/NOTICE.md) -- no network access needed beyond pulling the base
-# image itself.
+# Runs the AOSP verification offline; a failing build means a failed check.
 #
-# Build (the check itself runs as part of the build, so a failing build
-# means a check failed):
 #   podman build -t abx-aosp-verify -f Containerfile .
-#   # or: docker build -t abx-aosp-verify -f Containerfile .
 #
 # Copy the generated fixtures back out (all six .abx files under fixtures/):
 #   podman create --name abx-aosp-verify-tmp abx-aosp-verify

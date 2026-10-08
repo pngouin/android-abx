@@ -1,16 +1,4 @@
-//! `serde_pkgs` — stream ABX elements straight into typed structs via serde,
-//! instead of walking raw `Event`s by hand.
-//!
-//! Usage:
-//!   cargo run --features serialize --example serde_pkgs -- <input.abx> [element-name]
-//!
-//! Adapt the `Pkg` struct below (field names, `#[serde(rename = "...")]`,
-//! `Option<T>` for attributes that aren't always present) to whatever
-//! attributes your `.abx` file's elements actually carry.
-//!
-//! This is for a *wrapper* document — many repeated `<element>`s under some
-//! outer root. If your whole document is a single record instead, see
-//! `serde_root` (`android_abx::from_file`) — much less code for that shape.
+//! Usage: cargo run --features serialize --example serde_pkgs -- <input.abx> [element-name]
 
 use std::{env, process};
 
@@ -19,9 +7,6 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 struct Pkg {
     name: String,
-    // Not every <pkg> is guaranteed to carry a version, so this is
-    // Option<T> rather than a plain i32 — a missing attribute deserializes
-    // to None instead of erroring.
     version: Option<i32>,
 }
 
@@ -39,8 +24,6 @@ fn main() {
         process::exit(1);
     });
 
-    // deserialize_iter is lazy: each <element> is parsed and dropped as we
-    // go, so this holds one Pkg at a time in memory regardless of file size.
     let mut count = 0;
     for result in parser.deserialize_iter::<Pkg>(element) {
         match result {

@@ -5,10 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Minimal stand-in for the real {@code android.annotation.Nullable} — see
- * {@link NonNull}.
- */
+/** Compile-only stub of {@code android.annotation.Nullable}. */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD})
 public @interface Nullable {}

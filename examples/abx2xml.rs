@@ -1,9 +1,4 @@
-//! `abx2xml` — command-line tool built on top of the `abx` library.
-//!
-//! Usage:
-//!   abx2xml <input.abx>            → prints XML to stdout
-//!   abx2xml <input.abx> <out.xml>  → writes to file
-//!   echo … | abx2xml -             → reads from stdin
+//! Usage: abx2xml <input.abx|-> [output.xml]
 
 use std::{
     fs,

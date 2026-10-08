@@ -1,12 +1,4 @@
 #![cfg(feature = "serialize")]
-//! serde deserialization tests against the same real, AOSP-encoded `.abx`
-//! fixtures as `tests/aosp_fixture_tests.rs`, exercising the `serialize`
-//! feature — `deserialize_next`, `deserialize_all`, `deserialize_iter`, and
-//! nested-child mapping — against real data rather than only the hand-built
-//! blobs in `tests/serde_tests.rs`.
-
-// Fixture value 3.14 is an intentionally imprecise literal, not an
-// attempt at std::f64::consts::PI.
 #![allow(clippy::approx_constant)]
 
 use std::io::Cursor;
@@ -38,8 +30,6 @@ fn simple_pkg_fixture_deserializes_typed_ints() {
 
 #[test]
 fn simple_pkg_fixture_via_from_slice_matches_deserialize_next() {
-    // The one-shot entry point should need neither a parser instance nor
-    // the "pkg" tag name spelled out -- same real fixture, same result.
     let data = include_bytes!("fixtures/simple_pkg.abx");
     let pkg: SimplePkg = android_abx::from_slice(data).unwrap();
     assert_eq!(
@@ -74,9 +64,7 @@ struct Permission {
 #[derive(Debug, Deserialize, PartialEq)]
 struct PkgWithChildren {
     name: String,
-    // leaf child -> plain scalar field
     description: String,
-    // repeated children -> Vec<T>
     permission: Vec<Permission>,
 }
 
@@ -217,19 +205,8 @@ fn special_chars_fixture_text_drops_entity_references() {
     let mut p = AbxParser::new(data).unwrap();
     let note: Note = p.deserialize_next("note").unwrap().unwrap();
 
-    // title is the real AttributeValue::String, already decoded (see
-    // special_chars_fixture in tests/aosp_fixture_tests.rs) — serde sees
-    // the same value as the event-level API, since both read from the
-    // same AttributeValue.
     assert_eq!(note.title, "Tom & Jerry <3>");
 
-    // Limitation of the "$text" convenience field: read_element_body()
-    // (src/de/traversal.rs) only accumulates Event::Text, silently
-    // skipping Event::EntityReference and Event::IgnorableWhitespace —
-    // both of which this source text is full of (five EntityReference
-    // events split the text into six Text pieces). to_xml() renders all
-    // three event kinds correctly (see special_chars_fixture); $text does
-    // not, so it drops down to this (note the doubled space, from two
-    // adjacent Text(" ") pieces either side of the &amp; entity):
+    // `$text` keeps only Event::Text; entity references are dropped.
     assert_eq!(note.body, "Use quotes  apostrophes safely");
 }

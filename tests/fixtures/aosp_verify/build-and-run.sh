@@ -1,8 +1,5 @@
 #!/usr/bin/env sh
-# Compiles this directory's stubs, the vendored real AOSP source
-# (vendor/aosp/), and Harness.java, then runs the harness. Fully offline --
-# everything needed is already checked into vendor/ (see vendor/NOTICE.md).
-# See README.md ("Verifying against real AOSP") for what this checks and why.
+# Builds vendored AOSP source + Harness.java offline and runs the harness.
 set -eu
 
 cd "$(dirname "$0")"

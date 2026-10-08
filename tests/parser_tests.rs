@@ -1,10 +1,3 @@
-//! Integration tests for the abx crate.
-//!
-//! We build synthetic ABX blobs by hand (matching the AOSP wire format)
-//! so the tests are self-contained with no binary fixtures required.
-
-// Fixture values 3.14/2.718_281_828 are intentionally imprecise literals,
-// not attempts at std::f32::consts::PI/std::f64::consts::E.
 #![allow(clippy::approx_constant)]
 
 use android_abx::{AbxParser, AttributeValue, Event};
@@ -165,9 +158,7 @@ fn int_hex_attribute() {
 
 #[test]
 fn int_hex_attribute_negative_renders_like_real_aosp() {
-    // Real AOSP renders TYPE_INT_HEX via Integer.toString(v, 16), which
-    // treats v as signed: negative -> "-" + hex(magnitude), e.g.
-    // 0xCAFEBABE is "-35014542", not "cafebabe".
+    // Java Integer.toString(v, 16) is signed.
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("e"));
@@ -191,9 +182,7 @@ fn int_hex_attribute_negative_renders_like_real_aosp() {
 
 #[test]
 fn long_hex_attribute_negative_renders_like_real_aosp() {
-    // Same as int_hex_attribute_negative_renders_like_real_aosp, for
-    // TYPE_LONG_HEX / Long.toString(v, 16). Confirmed against real AOSP:
-    // Long.toString(0xDEADBEEFCAFEBABEL, 16) is "-2152411035014542".
+    // Java Long.toString(v, 16) is signed.
     let mut body = vec![CMD_START_DOCUMENT];
     body.push(TYPE_STRING | CMD_START_TAG);
     body.extend(interned_new("e"));
@@ -471,13 +460,6 @@ fn xml_entity_escaping() {
     let xml = AbxParser::new(&data).unwrap().to_xml().unwrap();
     assert!(xml.contains("&lt;foo&gt;&amp;&quot;bar&quot;&lt;/foo&gt;"));
 }
-
-// ===========================================================================
-// Stream parser tests
-// ===========================================================================
-//
-// We reuse the same hand-built ABX blobs but feed them through
-// `AbxStreamParser<Cursor<Vec<u8>>>` to exercise the Read-based path.
 
 use android_abx::AbxStreamParser;
 use std::io::{Cursor, Read};
@@ -759,8 +741,7 @@ fn stream_into_map() {
 
 #[test]
 fn stream_tiny_read_chunks() {
-    // Force the parser to refill the buffer many times by wrapping the source
-    // in a reader that returns 1 byte at a time.
+    // 1-byte reads force a refill on every primitive.
     struct OneByteReader<'a>(&'a [u8]);
     impl<'a> Read for OneByteReader<'a> {
         fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {

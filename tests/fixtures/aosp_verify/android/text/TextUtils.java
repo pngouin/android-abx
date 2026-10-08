@@ -1,16 +1,7 @@
 package android.text;
 
 /**
- * Minimal stand-in for the real {@code android.text.TextUtils} (part of the
- * Android SDK). {@code BinaryXmlPullParser} only calls {@code isGraphic},
- * so only that method is provided here.
- *
- * <p>Unlike the other stubs in this directory, {@code isGraphic}'s body
- * below is copied verbatim (not reimplemented) from AOSP's real
- * {@code frameworks/base/core/java/android/text/TextUtils.java}, to avoid
- * introducing a behavioral difference of our own into a component this
- * verification harness is trying to test AOSP's real behavior through.
- * Source:
+ * Stub of {@code android.text.TextUtils}; {@code isGraphic} copied verbatim from
  * https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/core/java/android/text/TextUtils.java
  *
  * <p>Copyright (C) The Android Open Source Project, licensed under the

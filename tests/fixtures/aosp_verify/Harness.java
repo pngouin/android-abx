@@ -7,28 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 
-/**
- * Verifies `abx` (the Rust crate this file ships alongside) against the
- * real, unmodified AOSP {@code BinaryXmlSerializer}/{@code BinaryXmlPullParser}
- * by actually compiling and running them, not just reading the source.
- *
- * <p>Three things this does:
- * <ol>
- *   <li>Writes every {@code .abx} fixture in {@code tests/fixtures/} —
- *       built with the real serializer, using its real typed API
- *       ({@code attributeInt}, {@code attributeBoolean}, {@code attributeInterned},
- *       ...) rather than a plain-string-only translation, so they can be
- *       checked in and decoded by `abx`'s own test suite without needing a
- *       JDK present at normal {@code cargo test} time.
- *   <li>Re-checks the four findings recorded in this crate's CLAUDE.md
- *       "VERIFIED" section still hold, printing PASS/FAIL for each. If AOSP
- *       ever changes this behavior upstream, re-running this against a
- *       fresh checkout is how that would be caught.
- * </ol>
- *
- * <p>Run via the sibling {@code Containerfile} (needs podman/docker), or
- * directly with a JDK: see {@code README.md} in this repo for both.
- */
+/** Writes the {@code .abx} fixtures with real AOSP and re-checks known AOSP behaviors. */
 public class Harness {
     public static void main(String[] args) throws Exception {
         String outDir = args.length > 0 ? args[0] : ".";
@@ -61,14 +40,7 @@ public class Harness {
         System.out.println("Wrote " + name + " (" + data.length + " bytes)");
     }
 
-    /**
-     * Every {@code AttributeValue} variant abx's encoder can produce
-     * (excluding {@code attributeInterned}, which abx deliberately never
-     * emits — see CLAUDE.md) and every text-bearing event type, plus a
-     * repeated tag name to exercise interning back-references. Matches
-     * {@code events_to_abx} on the Rust side byte-for-byte when fed the
-     * equivalent {@code Event} stream.
-     */
+    /** Every encodable attribute type and text event, plus a repeated tag name. */
     static byte[] serializeMainDocument() throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         BinaryXmlSerializer ser = new BinaryXmlSerializer();
@@ -93,7 +65,7 @@ public class Harness {
         ser.entityRef("amp");
         ser.docdecl("some-decl");
         ser.ignorableWhitespace("   ");
-        ser.text(""); // abx's AbxWriter always uses this form, never text(null) -- see checkTypeNullTextBug
+        ser.text("");
         ser.startTag(null, "root");
         ser.endTag(null, "root");
         ser.endTag(null, "root");
@@ -101,9 +73,6 @@ public class Harness {
         return buf.toByteArray();
     }
 
-    /** Equivalent content to simple_pkg.xml, with version/flags properly
-     * typed as ints (as real packages.xml-writing code would) rather than
-     * left as plain strings. */
     static byte[] serializeSimplePkg() throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         BinaryXmlSerializer ser = new BinaryXmlSerializer();
@@ -118,8 +87,6 @@ public class Harness {
         return buf.toByteArray();
     }
 
-    /** Equivalent content to nested_permissions.xml. All plain strings --
-     * no typed values to choose here. */
     static byte[] serializeNestedPermissions() throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         BinaryXmlSerializer ser = new BinaryXmlSerializer();
@@ -141,9 +108,6 @@ public class Harness {
         return buf.toByteArray();
     }
 
-    /** Equivalent content to booleans.xml, with every attribute properly
-     * typed (booleans via attributeBoolean, count/ratio via
-     * attributeInt/attributeDouble) rather than left as plain strings. */
     static byte[] serializeBooleans() throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         BinaryXmlSerializer ser = new BinaryXmlSerializer();
@@ -159,12 +123,7 @@ public class Harness {
         return buf.toByteArray();
     }
 
-    /** Equivalent content to repeated_strings.xml. "id" is typed as int;
-     * "category"/"name" use attributeInterned (not plain attribute) so
-     * this still exercises value-interning back-references the way the
-     * original fixture did -- real AOSP's attribute() never auto-interns a
-     * value (see CLAUDE.md), only attributeInterned() does, so this is the
-     * deliberate choice that keeps that coverage. */
+    /** Uses attributeInterned to cover value back-references. */
     static byte[] serializeRepeatedStrings() throws Exception {
         String[][] items = {
                 {"1", "tools", "Hammer"},
@@ -192,15 +151,7 @@ public class Harness {
         return buf.toByteArray();
     }
 
-    /** Equivalent content to special_chars.xml. Unlike xml2abx (which left
-     * attribute-value entities raw/escaped -- a quirk of that independent
-     * tool, not of AOSP), the "title" attribute here is the properly
-     * *decoded* string: BinaryXmlSerializer.attribute() takes a plain Java
-     * String with no XML-escaping concept at this API level, so a real
-     * caller passes the actual decoded value. Text content is split into
-     * explicit text()/entityRef() calls matching how a real XML-aware
-     * caller built on this API would emit entities as distinct tokens
-     * (this is what abx's own Event::EntityReference models). */
+    /** Attribute value passed decoded; entities as explicit entityRef() tokens. */
     static byte[] serializeSpecialChars() throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         BinaryXmlSerializer ser = new BinaryXmlSerializer();
@@ -224,17 +175,7 @@ public class Harness {
         return buf.toByteArray();
     }
 
-    /**
-     * Finding 3 in CLAUDE.md: real {@code BinaryXmlPullParser} cannot
-     * correctly read back a {@code TYPE_NULL} text token that real
-     * {@code BinaryXmlSerializer} itself can produce via {@code text(null)}
-     * -- {@code consumeToken()} calls {@code readUTF()} unconditionally for
-     * text-bearing tokens, desyncing on a payload-less {@code TYPE_NULL}
-     * token and silently truncating the rest of the document. This check
-     * expects that bug to still reproduce; a PASS here confirms abx's
-     * choice to never emit {@code TYPE_NULL} for text events is still the
-     * only safe one.
-     */
+    /** Expects BinaryXmlPullParser to still misread a TYPE_NULL text token. */
     static boolean checkTypeNullTextBug() throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         BinaryXmlSerializer ser = new BinaryXmlSerializer();
@@ -253,21 +194,13 @@ public class Harness {
             if (type == TypedXmlPullParser.END_TAG) sawEndTag = true;
             p.nextToken();
         }
-        // Expected (buggy) behavior: the parser desyncs after the TYPE_NULL
-        // text token and never reports the EndTag -- it jumps straight to
-        // END_DOCUMENT instead.
+        // Bug: parser skips the EndTag after the TYPE_NULL token.
         boolean bugReproduced = !sawEndTag;
         report("TYPE_NULL text token still mishandled by real BinaryXmlPullParser", bugReproduced);
         return bugReproduced;
     }
 
-    /**
-     * Finding 4 in CLAUDE.md: {@code Attribute.getValueString()} for
-     * {@code TYPE_INT_HEX}/{@code TYPE_LONG_HEX} uses
-     * {@code Integer.toString(v, 16)}/{@code Long.toString(v, 16)}, which
-     * treat {@code v} as signed -- a negative value renders as {@code -}
-     * followed by the hex of its magnitude, not the raw bit pattern.
-     */
+    /** Hex attributes render signed ({@code Integer.toString(v, 16)}). */
     static boolean checkSignedHexRendering() {
         boolean ok = true;
         ok &= reportEquals("Integer.toString(0xCAFEBABE, 16)", "-35014542", Integer.toString(0xCAFEBABE, 16));
@@ -279,12 +212,7 @@ public class Harness {
         return ok;
     }
 
-    /**
-     * Also confirmed in CLAUDE.md: real {@code FastDataOutput.writeInternedUTF}
-     * does not error past its 65,535-entry interning cap -- it silently
-     * stops caching new entries (each written fresh instead) while entries
-     * already interned keep back-referencing correctly.
-     */
+    /** writeInternedUTF stops caching past 65,535 entries without erroring. */
     static boolean checkPoolCapGracefulDegradation() {
         String label = "Real FastDataOutput stays exception-free past its 65535-entry interning cap";
         try {
