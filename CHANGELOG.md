@@ -4,6 +4,85 @@ All notable changes to this project are documented in this file, generated
 automatically from [Conventional Commits](https://www.conventionalcommits.org/)
 history by [git-cliff](https://git-cliff.org/).
 
+## [0.4.0] - 2026-10-08
+
+### Features
+
+- Rename the serialize feature to serde
+
+
+### Refactor
+
+- Share one winnow event grammar between slice and stream parsers
+
+
+### Documentation
+
+- Document public API following Rust API guidelines
+
+- *(readme)* Describe shared winnow grammar and refresh decode benchmarks
+
+- *(decode)* Fix AbxError intra-doc links in AbxStreamParser
+
+
+### Miscellaneous Tasks
+
+- *(deps)* Bump softprops/action-gh-release from 3.0.2 to 3.0.3
+
+- *(deps)* Bump softprops/action-gh-release from 3.0.2 to 3.0.3
+
+- *(deps)* Bump orhun/git-cliff-action from 4.8.0 to 4.9.0
+
+- *(deps)* Bump orhun/git-cliff-action from 4.8.0 to 4.9.0
+
+- *(deps)* Bump orhun/git-cliff-action from 4.9.0 to 4.9.1
+
+- *(deps)* Bump orhun/git-cliff-action from 4.9.0 to 4.9.1
+
+- *(deps)* Bump thiserror from 2.0.20 to 2.0.21
+
+- *(deps)* Bump thiserror from 2.0.20 to 2.0.21
+
+- *(deps)* Bump faster-hex from 0.10.0 to 0.10.1
+
+- *(deps)* Bump faster-hex from 0.10.0 to 0.10.1
+
+- Trim comments in tests, benches, examples and AOSP harness
+
+- *(release)* Bump version to 0.4.0
+
+
+## [0.3.1] - 2026-08-29
+
+### Features
+
+- Rename lib from abx to android_abx
+
+
+### Documentation
+
+- *(changelog)* Update CHANGELOG.md for v0.2.1
+
+- Update README.md with latest version of the lib
+
+
+### Miscellaneous Tasks
+
+- *(deps)* Bump thiserror from 2.0.19 to 2.0.20
+
+- *(deps)* Bump base64 from 0.23.0 to 0.23.1
+
+- *(deps)* Bump base64 from 0.23.0 to 0.23.1
+
+- *(deps)* Bump Swatinem/rust-cache from 2.9.1 to 2.9.2
+
+- *(deps)* Bump Swatinem/rust-cache from 2.9.1 to 2.9.2
+
+- Remove unnecessary comment
+
+- *(release)* Bump version to 0.3.0
+
+
 ## [0.2.1] - 2026-07-23
 
 ### Features
