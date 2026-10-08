@@ -16,11 +16,11 @@ real encoded files in both directions — not just this crate's own tests.
 
 ```toml
 [dependencies]
-android-abx = "0.3"
+android-abx = "0.4"
 # or, for serde support:
-android-abx = { version = "0.3", features = ["serde"] }
+android-abx = { version = "0.4", features = ["serde"] }
 # or, to encode XML text into ABX bytes:
-android-abx = { version = "0.3", features = ["xml"] }
+android-abx = { version = "0.4", features = ["xml"] }
 ```
 
 ## Not AXML
