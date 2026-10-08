@@ -317,7 +317,7 @@ impl<R: Read> AbxStreamParser<R> {
     /// assert_eq!(pkg.permission.len(), 2);
     /// # Ok::<(), android_abx::AbxError>(())
     /// ```
-    #[cfg(feature = "serialize")]
+    #[cfg(feature = "serde")]
     pub fn deserialize_next<T: serde::de::DeserializeOwned>(
         &mut self,
         element: &str,
@@ -330,7 +330,7 @@ impl<R: Read> AbxStreamParser<R> {
     /// # Errors
     ///
     /// Same as [`deserialize_next`](Self::deserialize_next).
-    #[cfg(feature = "serialize")]
+    #[cfg(feature = "serde")]
     pub fn deserialize_all<T: serde::de::DeserializeOwned>(
         &mut self,
         element: &str,
@@ -367,7 +367,7 @@ impl<R: Read> AbxStreamParser<R> {
     /// assert_eq!(names, ["INTERNET", "CAMERA"]);
     /// # Ok::<(), android_abx::AbxError>(())
     /// ```
-    #[cfg(feature = "serialize")]
+    #[cfg(feature = "serde")]
     pub fn deserialize_iter<'p, T: serde::de::DeserializeOwned>(
         &'p mut self,
         element: &'p str,
@@ -481,14 +481,14 @@ impl<R: Read> Iterator for AbxStreamParser<R> {
 /// Iterator returned by [`AbxStreamParser::deserialize_iter`].
 ///
 /// Yields `Result<T>` for each matching element.
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 pub struct DeserializeIter<'p, R: Read, T> {
     parser: &'p mut AbxStreamParser<R>,
     element: &'p str,
     _marker: std::marker::PhantomData<T>,
 }
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 impl<'p, R: Read, T: serde::de::DeserializeOwned> Iterator for DeserializeIter<'p, R, T> {
     type Item = Result<T>;
 

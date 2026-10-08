@@ -303,7 +303,7 @@ impl<'a> AbxParser<'a> {
     /// assert_eq!(pkg.permission.len(), 2);
     /// # Ok::<(), android_abx::AbxError>(())
     /// ```
-    #[cfg(feature = "serialize")]
+    #[cfg(feature = "serde")]
     pub fn deserialize_next<T: serde::de::DeserializeOwned>(
         &mut self,
         element: &str,
@@ -316,7 +316,7 @@ impl<'a> AbxParser<'a> {
     /// # Errors
     ///
     /// Same as [`deserialize_next`](Self::deserialize_next).
-    #[cfg(feature = "serialize")]
+    #[cfg(feature = "serde")]
     pub fn deserialize_all<T: serde::de::DeserializeOwned>(
         &mut self,
         element: &str,

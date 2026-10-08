@@ -52,7 +52,7 @@
 //!
 //! # Deserializing with serde
 //!
-//! With the `serialize` feature, an element can be deserialized into any type
+//! With the `serde` feature, an element can be deserialized into any type
 //! that implements `serde::Deserialize`. Struct fields are filled from:
 //!
 //! - attributes, by name. Use `#[serde(rename = "...")]` for names that are not
@@ -75,7 +75,7 @@
 //!
 //! # Feature flags
 //!
-//! - `serialize`: serde deserialization.
+//! - `serde`: serde deserialization.
 //! - `xml`: `xml_to_abx`, to encode XML text.
 
 #![warn(missing_docs)]
@@ -108,9 +108,9 @@ mod encode;
 pub use encode::xml_to_abx;
 pub use encode::{AbxWriter, events_to_abx};
 
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 mod de;
-#[cfg(feature = "serialize")]
+#[cfg(feature = "serde")]
 pub use de::{from_element, from_file, from_reader, from_slice};
 
 /// Converts an ABX document to an XML string.

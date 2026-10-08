@@ -1,4 +1,4 @@
-//! `cargo bench --bench deserialize --features serialize`
+//! `cargo bench --bench deserialize --features serde`
 
 use std::io::Cursor;
 

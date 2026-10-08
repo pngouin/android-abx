@@ -18,7 +18,7 @@ real encoded files in both directions — not just this crate's own tests.
 [dependencies]
 android-abx = "0.3"
 # or, for serde support:
-android-abx = { version = "0.3", features = ["serialize"] }
+android-abx = { version = "0.3", features = ["serde"] }
 # or, to encode XML text into ABX bytes:
 android-abx = { version = "0.3", features = ["xml"] }
 ```
@@ -61,7 +61,7 @@ let mut p = android_abx::open_file("packages.abx")?;
 let xml = p.to_xml()?;
 ```
 
-With `serialize`, deserialize straight into your own types. For a
+With `serde`, deserialize straight into your own types. For a
 document whose root *is* the record you want:
 
 ```rust
@@ -139,7 +139,7 @@ event grammar, so their output (and their errors) are always identical:
 
 Both expose the same convenience surface: `to_xml`/`write_xml`,
 `find_attribute`/`find_all_attributes`, `attributes_of`/`all_attributes_of`,
-`into_map`, and (with `serialize`) `deserialize_next`/`deserialize_all`,
+`into_map`, and (with `serde`) `deserialize_next`/`deserialize_all`,
 plus `deserialize_iter` for true lazy streaming on `AbxStreamParser`.
 
 Encoding is one `AbxWriter<W: Write>`, not two — writing has no
@@ -259,7 +259,7 @@ for catching upstream behavior changes.
 
 ```bash
 cargo bench --bench parsing
-cargo bench --bench deserialize --features serialize
+cargo bench --bench deserialize --features serde
 cargo bench --bench encoding
 cargo bench --bench xml_encoding --features xml
 ```
@@ -324,7 +324,7 @@ Three optimization passes came out of these benchmarks:
 
 ## Feature flags
 
-- `serialize` — `serde::Deserialize` support: `from_slice`/`from_reader`/
+- `serde` — `serde::Deserialize` support: `from_slice`/`from_reader`/
   `from_file`, `deserialize_next`/`deserialize_all`/`deserialize_iter`.
 - `xml` — `xml_to_abx`, encoding plain XML text into ABX bytes (pulls in
   `quick-xml`). The lower-level `AbxWriter`/`events_to_abx` need no extra

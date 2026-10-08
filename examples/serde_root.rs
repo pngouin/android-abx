@@ -1,4 +1,4 @@
-//! Usage: cargo run --features serialize --example serde_root -- <input.abx>
+//! Usage: cargo run --features serde --example serde_root -- <input.abx>
 
 use std::{env, process};
 

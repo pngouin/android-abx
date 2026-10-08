@@ -1,4 +1,4 @@
-#![cfg(feature = "serialize")]
+#![cfg(feature = "serde")]
 #![allow(clippy::approx_constant)]
 
 use std::io::Cursor;
